@@ -1,0 +1,17 @@
+# Editors and IDE
+*.vscode/
+*.code-workspace
+
+# Object files
+*.o
+*.obj
+*.elf
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Directories
+*build/
+app/bin/
