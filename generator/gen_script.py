@@ -159,7 +159,7 @@ types_df.columns = df.iloc[types_start+1]
 donnees_df.columns = df.iloc[donnees_start+1]
 
 # Output directory
-output_dir = '../../app/src'
+output_dir = '../app/src'
 os.makedirs(output_dir, exist_ok=True)
 
 # Générate files
