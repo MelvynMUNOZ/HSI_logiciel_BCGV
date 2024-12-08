@@ -4,7 +4,7 @@
 
 This project includes three key files for generating and managing project structure:
 - `app_struct.xlsx`: Contains tables "TYPES" and "DONNEES" defining the project structure
-- `gen_script.py`: Generates necessary files in `./app/src`, including `typedefs.h`, `context.h`, and `context.c`
+- `gen_script.py`: Generates necessary files in `./app/lib/bcgv_api/include` and ./app/lib/bcgv_api/src, including `bcgv_api.h` and `bcgv_api.c`
 - `requirements.txt`: Lists Python dependencies for the project
 
 ## Table of Contents

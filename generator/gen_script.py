@@ -16,6 +16,12 @@ install_packages()
 import pandas as pd
 import re
 
+# Output directories
+include_dir = '../app/lib/bcgv_api/include'
+src_dir = '../app/lib/bcgv_api/src'
+os.makedirs(include_dir, exist_ok=True)
+os.makedirs(src_dir, exist_ok=True)
+
 # A function that generates global variables
 def create_global_variables(domaine, nom):
     match = re.search(r'\[(\d+); (\d+)\]', str(domaine))
@@ -25,58 +31,40 @@ def create_global_variables(domaine, nom):
         return f"#define {var_name}_MIN {min_val}\n#define {var_name}_MAX {max_val}\n\n"
     return ""
 
-# [typedefs.h] - A function that generates types definitons
-def generate_typedefs(data_df):
+# [bcgv_api.h] - A function that generates bcgv_api.h
+def generate_bcgv_api_h(types_df, donnees_df):
     header = """/**
- * \\file typedefs.h
- * \\brief Type definitions for project
- * \\details Contains all custom types and enumerations used in the project
+ * \\file bcgv_api.h
+ * \\brief Type definitions and context functions for project
+ * \\details Contains all custom types, enumerations, and context initialization/accessor functions used in the project
  * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
  */
 
-#ifndef TYPEDEFS_H
-#define TYPEDEFS_H
+#ifndef BCGV_API_H
+#define BCGV_API_H
 
 #include <stdint.h>
 #include <stdbool.h>
 
 """
     global domain_values
-    domain_values = ''.join(data_df.apply(lambda row: create_global_variables(row['Domaine'], row['Nom']), axis=1))
-    typedefs = header + f"// [Domain values]\n{domain_values}"
+    domain_values = ''.join(types_df.apply(lambda row: create_global_variables(row['Domaine'], row['Nom']), axis=1))
+    bcgv_api_h = header + f"// [Domain values]\n{domain_values}"
     
-    for _, row in data_df.iterrows():
+    for _, row in types_df.iterrows():
         commentaire, genre, declaration, nom = row['Commentaire'], row['Genre'].lower(), row['Declaration'], row['Nom']
-        typedefs += f"\n// {commentaire}\n"
+        bcgv_api_h += f"\n// {commentaire}\n"
         if genre == 'atom':
-            typedefs += f"typedef {declaration} {nom};\n"
+            bcgv_api_h += f"typedef {declaration} {nom};\n"
         elif genre == 'enum':
             enum_values = ',\n    '.join(map(str.strip, declaration.split(',')))
-            typedefs += f"typedef enum {{\n    {enum_values},\n}} {nom};\n"
-    typedefs += "\n#endif // TYPEDEFS_H"
+            bcgv_api_h += f"typedef enum {{\n    {enum_values},\n}} {nom};\n"
     
-    with open(os.path.join(output_dir, 'typedefs.h'), 'w') as file:
-        file.write(typedefs)
-
-# [context.h] - A function that generates context.h
-def generate_context_h(donnees_df):
-    context_h = """/**
- * \\file context.h
- * \\brief Context initialization and accessors for project
- * \\details Contains initialization and accessor functions for all custom types and enumerations used in the project
- * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
- */
-
-#ifndef CONTEXT_H
-#define CONTEXT_H
-
-#include "typedefs.h"
-
-void context_init();
+    bcgv_api_h += """\nvoid bcgv_init();
 """
     for _, row in donnees_df.iterrows():
         type_name, type_def = row['Nom'], row['Type']
-        context_h += f"""\n/**
+        bcgv_api_h += f"""\n/**
  * \\brief Gets the {type_name.lower()} value.
  * \\details Returns the current state of the {type_name.lower()}.
  * \\return {type_def} : The {type_name.lower()} value.
@@ -90,29 +78,29 @@ void context_init();
  */
 void set_{type_name.lower()}({type_def} value);
 """
-    context_h += "\n#endif // CONTEXT_H"
+    bcgv_api_h += "\n#endif // BCGV_API_H"
     
-    with open(os.path.join(output_dir, 'context.h'), 'w') as file:
-        file.write(context_h)
+    with open(os.path.join(include_dir, 'bcgv_api.h'), 'w') as file:
+        file.write(bcgv_api_h)
 
-# [context.c] - A function that generates context.c
-def generate_context_c(donnees_df, domain_values):
-    context_c = """/**
- * \\file context.c
+# [bcgv_api.c] - A function that generates bcgv_api.c
+def generate_bcgv_api_c(donnees_df, domain_values):
+    bcgv_api_c = """/**
+ * \\file bcgv_api.c
  * \\brief Context initialization and definitions for project
  * \\details Contains initialization and definition functions for all custom types and enumerations used in the project
  * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
  */
 
-#include "context.h"
+#include "bcgv_api.h"
 
 // Context structure
 typedef struct {
 """
     for _, row in donnees_df.iterrows():
-        context_c += f"    {row['Type']} {row['Nom']}; // {row['Commentaire']}\n"
+        bcgv_api_c += f"    {row['Type']} {row['Nom']}; // {row['Commentaire']}\n"
     
-    context_c += """} context_t;
+    bcgv_api_c += """} context_t;
 
 // Global context structure instance
 static context_t context;
@@ -120,14 +108,14 @@ static context_t context;
 void context_init() {
 """
     for _, row in donnees_df.iterrows():
-        context_c += f"    context.{row['Nom']} = {row['Valeur d\'init']};\n"
-    context_c += "}\n\n// Getters and Setters"
+        bcgv_api_c += f"    context.{row['Nom']} = {row['Valeur d\'init']};\n"
+    bcgv_api_c += "}\n\n// Getters and Setters"
     
-    # Ajout des getters et setters avec test de domaine si nécessaire
+    # getters et setters
     for _, row in donnees_df.iterrows():
         type_name, type_def = row['Nom'], row['Type']
         var_name = type_name.upper().replace("_T", "")
-        context_c += f"""
+        bcgv_api_c += f"""
 {type_def} get_{type_name.lower()}() {{
     return context.{type_name.lower()};
 }}
@@ -135,14 +123,14 @@ void context_init() {
 void set_{type_name.lower()}({type_def} value) {{
 """
         if f"#define {var_name}_MIN" in domain_values and f"#define {var_name}_MAX" in domain_values:
-            context_c += f"    if (value >= {var_name}_MIN && value <= {var_name}_MAX) {{\n"
-            context_c += f"        context.{type_name.lower()} = value;\n    }}\n"
+            bcgv_api_c += f"    if (value >= {var_name}_MIN && value <= {var_name}_MAX) {{\n"
+            bcgv_api_c += f"        context.{type_name.lower()} = value;\n    }}\n"
         else:
-            context_c += f"    context.{type_name.lower()} = value;\n"
-        context_c += "}\n"
+            bcgv_api_c += f"    context.{type_name.lower()} = value;\n"
+        bcgv_api_c += "}\n"
 
-    with open(os.path.join(output_dir, 'context.c'), 'w') as file:
-        file.write(context_c)
+    with open(os.path.join(src_dir, 'bcgv_api.c'), 'w') as file:
+        file.write(bcgv_api_c)
 
 # Read the excel file
 file_path = 'app_struct.xlsx'
@@ -158,13 +146,9 @@ donnees_df = df.iloc[donnees_start+2 :].dropna(how='all').reset_index(drop=True)
 types_df.columns = df.iloc[types_start+1]
 donnees_df.columns = df.iloc[donnees_start+1]
 
-# Output directory
-output_dir = '../app/src'
-os.makedirs(output_dir, exist_ok=True)
+# Generate files
+generate_bcgv_api_h(types_df, donnees_df)
+generate_bcgv_api_c(donnees_df, domain_values)
 
-# Générate files
-generate_typedefs(types_df)
-generate_context_h(donnees_df)
-generate_context_c(donnees_df, domain_values)
-
-print(f"typedefs.h, context.h and context.c generated in {output_dir}.")
+print(f"bcgv_api.h generated in {include_dir}.")
+print(f"bcgv_api.c generated in {src_dir}.")
