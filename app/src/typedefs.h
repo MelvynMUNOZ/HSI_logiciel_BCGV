@@ -30,8 +30,6 @@
 #define DASHB_RPM_MIN 0
 #define DASHB_RPM_MAX 1000
 
-// Command
-typedef bool cmd_t;
 
 // [Command]
 typedef bool cmd_t;
