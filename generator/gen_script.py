@@ -43,7 +43,7 @@ def generate_typedefs(data_df):
 """
     global domain_values
     domain_values = ''.join(data_df.apply(lambda row: create_global_variables(row['Domaine'], row['Nom']), axis=1))
-    typedefs = header + f"// [Domain values]\n{domain_values}// Command\ntypedef bool cmd_t;\n"
+    typedefs = header + f"// [Domain values]\n{domain_values}"
     
     for _, row in data_df.iterrows():
         commentaire, genre, declaration, nom = row['Commentaire'], row['Genre'].lower(), row['Declaration'], row['Nom']
