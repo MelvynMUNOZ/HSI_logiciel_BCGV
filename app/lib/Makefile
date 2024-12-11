@@ -1,18 +1,5 @@
 #==============================================================================
 
-#apres la génération des fichiers .c et .h automatiquement avec le script
-#on execute ce makefile qui va compiler les fichier .c et .h
-
-#ils seront dans le dossier src (dans ../src)
-typedefs.h #tous les types
-context.c #la struct, getters et setters pour toutes les variables
-context.h #proto des getters et setters et proto du context init
-
-#compile
-#link
-#crée l'archive .a
-#voir ar
-
 # Define executable name
 EXECUTABLE_NAME := bcgv_api
 
@@ -149,7 +136,7 @@ $(DIR_BUILD)%.o: $(DIR_SRC)%.c
 #----------------------------------------------------
 # Compile O source files to build the static library
 #----------------------------------------------------
-$(DIR_LIB)%.a: $(DIR_BUILD)%.o
+$(TARGET): $(DIR_BUILD)%.o
 	@echo '-- Create static library $<'
 	$(Q)$(AR) $(RCS) $< $@
 
@@ -171,6 +158,16 @@ clean:
 		$(RM) $(OBJECT_FILES); \
 	else \
 		echo "Skipping: OBJECT_FILES is not set"; \
+	fi
+	@if [ -n "$(DIR_BUILD)" ]; then \
+		$(RM) $(DIR_BUILD); \
+	else \
+		echo "Skipping: DIR_BUILD is not set"; \
+	fi
+	@if [ -n "$(DIR_LIB)" ]; then \
+		$(RM) $(DIR_LIB); \
+	else \
+		echo "Skipping: DIR_LIB is not set"; \
 	fi
 	@echo 'Clean done'
 
