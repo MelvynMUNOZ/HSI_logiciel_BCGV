@@ -4,7 +4,7 @@
 EXECUTABLE_NAME := bcgv_api
 
 # Define build mode (debug or release)
-BUILD_MODE := debug
+BUILD_MODE := release
 
 # Define source files to compile
 SOURCES := bcgv_api.c
@@ -181,6 +181,6 @@ info:
 	@echo '-- CFLAGS: $(CFLAGS)'
 	@echo 'Files'
 	@echo '-- TARGET: $(TARGET)'
-	@echo "SOURCES: $(SOURCES)"
+	@echo 'SOURCES: $(SOURCES)'
 	@echo '-- SOURCE_FILES: $(SOURCE_FILES)'
 	@echo '-- OBJECT_FILES: $(OBJECT_FILES)'

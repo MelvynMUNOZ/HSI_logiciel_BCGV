@@ -4,7 +4,7 @@
 EXECUTABLE_NAME := app
 
 # Define build mode (debug or release)
-BUILD_MODE := debug
+BUILD_MODE := release
 
 # Define source files to compile
 SOURCES := \
