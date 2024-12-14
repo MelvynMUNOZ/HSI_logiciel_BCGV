@@ -1,34 +1,31 @@
 #==============================================================================
 
 # Define executable name
-EXECUTABLE_NAME := app
+EXECUTABLE_NAME := bcgv_api
 
 # Define build mode (debug or release)
 BUILD_MODE := release
 
 # Define source files to compile
-SOURCES := \
-	app.c
-
+SOURCES := bcgv_api.c
 
 #==============================================================================
 # DIRECTORIES AND FILES
 #==============================================================================
 
 ### Predefined directories
-DIR_BIN   := bin/
 DIR_BUILD := build/
-DIR_SRC   := src/
+DIR_SRC := src/
+DIR_LIB := lib/
 
 ### Target
-TARGET := $(DIR_BIN)$(EXECUTABLE_NAME)
+TARGET := $(DIR_LIB)$(EXECUTABLE_NAME).a
 
 ### Source files
-SOURCE_FILES := $(filter-out \,$(addprefix $(DIR_SRC),$(SOURCES)))
+SOURCE_FILES := $(strip $(filter-out \, $(addprefix $(DIR_SRC), $(SOURCES))))
 
-### Object files
-OBJECT_FILES := $(subst $(DIR_SRC),$(DIR_BUILD),$(addsuffix .o,$(basename $(SOURCE_FILES))))
-
+### Object file 
+OBJECT_FILES := $(strip $(subst $(DIR_SRC), $(DIR_BUILD), $(addsuffix .o, $(basename $(SOURCE_FILES)))))
 
 #==============================================================================
 # COMPILER AND LINKER
@@ -43,19 +40,15 @@ CSTD := -std=c99
 ### Extra flags to give to the C compiler
 CFLAGS := $(CSTD) -W -Wall -pedantic
 
-### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
-CPPFLAGS := -I../driver/include
-
-### Extra flags to give to compiler when it invokes the linker (e.g. -L ...)
-LDFLAGS := -L../driver/lib
-
-### Library names given to compiler when it invokes the linker (e.g. -l ...)
-LDLIBS := -l:drv_api.a
-
 ### Build mode specific flags
 DEBUG_FLAGS   := -O0 -g3
 RELEASE_FLAGS := -O2 -g0
 
+### Library static
+AR := ar
+
+### Library compiler function
+RCS := rcs
 
 #==============================================================================
 # SHELL
@@ -64,9 +57,6 @@ RELEASE_FLAGS := -O2 -g0
 ### Commands
 MKDIR := mkdir -p
 RM    := rm -rf
-CP    := cp -rf
-MV    := mv
-
 
 #==============================================================================
 # RULES
@@ -74,27 +64,25 @@ MV    := mv
 
 default: build
 
-### Verbosity
+###Verbosity
 VERBOSE := $(or $(v), $(verbose))
 ifeq ($(VERBOSE),)
-    Q := @
+	Q := @
 else
-    Q :=
+	Q := 
 endif
-
 
 #-------------------------------------------------
 # (Internal rule) Check directories
 #-------------------------------------------------
 .PHONY: __checkdirs
 __checkdirs:
-	@if [ ! -d "$(DIR_BIN)" ]; then \
-		$(MKDIR) $(DIR_BIN); \
-	fi
 	@if [ ! -d "$(DIR_BUILD)" ]; then \
 		$(MKDIR) $(DIR_BUILD); \
 	fi
-
+	@if [ ! -d "$(DIR_LIB)" ]; then \
+		$(MKDIR) $(DIR_LIB); \
+	fi
 
 #-------------------------------------------------
 # (Internal rule) Pre build operations
@@ -104,7 +92,7 @@ __prebuild: __checkdirs
 ifeq ($(EXECUTABLE_NAME),)
 	$(error EXECUTABLE_NAME is required. Must provide an executable name)
 endif
-ifeq ($(filter $(BUILD_MODE),debug release),)
+ifeq ($(filter $(BUILD_MODE), debug release),)
 	$(error BUILD_MODE is invalid. Must provide a valid mode (debug or release))
 endif
 ifeq ($(SOURCES),)
@@ -133,14 +121,6 @@ build: __prebuild $(TARGET)
 #-------------------------------------------------
 .PHONY: rebuild
 rebuild: clean build
-	
-
-#-------------------------------------------------
-# Link object files into target target
-#-------------------------------------------------
-$(TARGET): $(OBJECT_FILES)
-	@echo '-- Linking target $@'
-	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 
 #-------------------------------------------------
@@ -149,7 +129,15 @@ $(TARGET): $(OBJECT_FILES)
 $(DIR_BUILD)%.o: $(DIR_SRC)%.c
 	@echo '-- Compiling $<'
 	@$(MKDIR) $(dir $@)
-	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@ 
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
+
+
+#----------------------------------------------------
+# Compile O source files to build the static library
+#----------------------------------------------------
+$(TARGET): $(OBJECT_FILES)
+	@echo '-- Creating static library $@'
+	$(Q)$(AR) $(RCS) $@ $^
 
 
 #-------------------------------------------------
@@ -170,6 +158,16 @@ clean:
 	else \
 		echo "Skipping: OBJECT_FILES is not set"; \
 	fi
+	@if [ -n "$(DIR_BUILD)" ]; then \
+		$(RM) $(DIR_BUILD); \
+	else \
+		echo "Skipping: DIR_BUILD is not set"; \
+	fi
+	@if [ -n "$(DIR_LIB)" ]; then \
+		$(RM) $(DIR_LIB); \
+	else \
+		echo "Skipping: DIR_LIB is not set"; \
+	fi
 	@echo 'Clean done'
 
 
@@ -181,10 +179,8 @@ info:
 	@echo 'Build configurations'
 	@echo '-- CC: $(CC)'
 	@echo '-- CFLAGS: $(CFLAGS)'
-	@echo '-- CPPFLAGS: $(CPPFLAGS)'
-	@echo '-- LDFLAGS: $(LDFLAGS)'
-	@echo '-- LDLIBS: $(LDLIBS)'
 	@echo 'Files'
 	@echo '-- TARGET: $(TARGET)'
+	@echo 'SOURCES: $(SOURCES)'
 	@echo '-- SOURCE_FILES: $(SOURCE_FILES)'
 	@echo '-- OBJECT_FILES: $(OBJECT_FILES)'

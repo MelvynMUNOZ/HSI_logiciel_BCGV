@@ -5,7 +5,7 @@
  * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
  */
 
-#include "bcgv_api.h"
+#include "../include/bcgv_api.h"
 
 // Context structure
 typedef struct {
