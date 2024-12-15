@@ -29,8 +29,8 @@ endif
 .PHONY: clean
 clean:
 	@echo 'Clean generated files and static library'
-	$(MAKE) -C $(DIR_APP) clean; \
-	$(MAKE) -C $(DIR_LIB) clean; \
+	$(Q)$(MAKE) -C $(DIR_APP) clean
+	$(Q)$(MAKE) -C $(DIR_LIB) clean
 
 #-------------------------------------------------
 # App Makefile
@@ -38,7 +38,7 @@ clean:
 .PHONY: app
 app:
 	@echo 'App Makefile'
-	$(MAKE) -C $(DIR_APP); \
+	$(Q)$(MAKE) -C $(DIR_APP)
 
 #-------------------------------------------------
 # Lib Makefile
@@ -46,7 +46,7 @@ app:
 .PHONY: lib
 lib:
 	@echo 'Static Lib Makefile'
-	$(MAKE) -C $(DIR_LIB); \
+	$(Q)$(MAKE) -C $(DIR_LIB)
 
 #-------------------------------------------------
 # App and Lib Makefile

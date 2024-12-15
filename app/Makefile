@@ -44,13 +44,13 @@ CSTD := -std=c99
 CFLAGS := $(CSTD) -W -Wall -pedantic
 
 ### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
-CPPFLAGS := -I../driver/include
+CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include
 
 ### Extra flags to give to compiler when it invokes the linker (e.g. -L ...)
-LDFLAGS := -L../driver/lib
+LDFLAGS := -L../driver/lib -L./lib/bcgv_api/lib
 
 ### Library names given to compiler when it invokes the linker (e.g. -l ...)
-LDLIBS := -l:drv_api.a
+LDLIBS := -l:drv_api.a -l:bcgv_api.a
 
 ### Build mode specific flags
 DEBUG_FLAGS   := -O0 -g3
