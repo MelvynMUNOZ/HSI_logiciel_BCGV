@@ -40,6 +40,9 @@ CSTD := -std=c99
 ### Extra flags to give to the C compiler
 CFLAGS := $(CSTD) -W -Wall -pedantic
 
+### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
+CPPFLAGS := -I./include
+
 ### Build mode specific flags
 DEBUG_FLAGS   := -O0 -g3
 RELEASE_FLAGS := -O2 -g0
@@ -129,7 +132,7 @@ rebuild: clean build
 $(DIR_BUILD)%.o: $(DIR_SRC)%.c
 	@echo '-- Compiling $<'
 	@$(MKDIR) $(dir $@)
-	$(Q)$(CC) $(CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 
 #----------------------------------------------------

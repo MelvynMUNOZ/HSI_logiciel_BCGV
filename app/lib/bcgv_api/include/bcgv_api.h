@@ -2,7 +2,7 @@
  * \file bcgv_api.h
  * \brief Type definitions and context functions for project
  * \details Contains all custom types, enumerations, and context initialization/accessor functions used in the project
- * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
+ * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
 #ifndef BCGV_API_H
@@ -15,63 +15,79 @@
 #define FRAME_NUMBER_MIN 1
 #define FRAME_NUMBER_MAX 100
 
-#define SPEED_MIN 0
-#define SPEED_MAX 255
+#define FUEL_LEVEL_MAX 40
 
-#define MOTOR_FUEL_MIN 0
-#define MOTOR_FUEL_MAX 40
-
-#define MOTOR_RPM_MIN 0
-#define MOTOR_RPM_MAX 10000
-
-#define DASHB_FUEL_MIN 0
-#define DASHB_FUEL_MAX 100
-
-#define DASHB_RPM_MIN 0
-#define DASHB_RPM_MAX 1000
+#define ENGINE_RPM_MAX 10000
 
 
-// [Command]
-typedef bool cmd_t;
+// Command to turn on/off lights (position, crossing, high beam)
+typedef enum {
+    LIGHT_OFF = 0,
+    LIGHT_ON = 1,
+} cmd_light_t;
 
-// [Trame Number] Looping 100->1
+// Commands for indicators and hazard (warnings) lights 
+typedef enum {
+    INDICATOR_OFF = 0,
+    INDICATOR_LEFT = 1,
+    INDICATOR_RIGHT = 2,
+    INDICATOR_HAZARD = 3,
+} cmd_indicator_t;
+
+// Commands for windshield wipers
+typedef enum {
+    WIPER_OFF = 0,
+    WIPER_LOW = 1,
+    WIPER_HIGH = 2,
+} cmd_wiper_t;
+
+// Commands for windshield washer
+typedef enum {
+    WASHER_OFF = 0,
+    WASHER_ON = 1,
+} cmd_washer_t;
+
+// Frame number looping 100->1
 typedef uint8_t frame_number_t;
 
-// [Chassis] Distance (km)
+// Distance (km)
 typedef uint32_t distance_t;
 
-// [Chassis] Speed (km/h)
+// Speed (km/h)
 typedef uint8_t speed_t;
 
-// [Chassis] Chassis issues
+// Chassis issues
 typedef enum {
-    CHASSIS_ISSUE_OK = 0x0,
-    CHASSIS_ISSUE_TYRES = 0x1,
-    CHASSIS_ISSUE_BRAKES = 0x2,
+    CHASSIS_ISSUE_NONE = 0,
+    CHASSIS_ISSUE_TYRES = 1,
+    CHASSIS_ISSUE_BRAKES = 2,
 } chassis_issues_t;
 
-// [Motor] Motor issues
+// Motor issues
 typedef enum {
-    MOTOR_ISSUE_OK = 0x0,
-    MOTOR_ISSUE_TYRES = 0x1,
-    MOTOR_ISSUE_TEMPERATURE_LDR = 0x2,
-    MOTOR_ISSUE_OIL_OVERHEATING = 0x4,
+    MOTOR_ISSUE_NONE = 0,
+    MOTOR_ISSUE_TYRES = 1,
+    MOTOR_ISSUE_TEMPERATURE_LDR = 2,
+    MOTOR_ISSUE_OIL_OVERHEATING = 4,
 } motor_issues_t;
 
-// [Motor] Fuel level (litres)
-typedef uint8_t motor_fuel_t;
+// Issues, bit-carrying
+typedef uint8_t issues_t;
 
-// [Motor] Revolutions per minute
-typedef uint32_t motor_rpm_t;
+// Fuel level (litres)
+typedef uint8_t fuel_level_t;
 
-// [Battery] Battery issues
+// Engine revolutions per minute
+typedef uint32_t engine_rpm_t;
+
+// Battery issues
 typedef enum {
-    BATTERY_ISSUES_OK = 0x0,
+    BATTERY_ISSUES_NONE = 0x0,
     BATTERY_ISSUES_DISCHARGED = 0x1,
     BATTERY_ISSUES_KO = 0x2,
 } battery_issues_t;
 
-// [MUX] CRC8 - Calculated on the rest of the frame
+// CRC8 - Calculated on the rest of the frame
 typedef uint8_t crc8_t;
 
 // [BCGV -> BGF] Message ID
@@ -83,128 +99,122 @@ typedef enum {
     BCGV_BGF_MSG_ID_5 = 0x05,
 } bcgv_bgf_msg_id_t;
 
-// [Dashboard] Fuel level display (%)
-typedef uint8_t dashb_fuel_t;
-
-// [Dashboard] RPM display (RPM/10) -> 3000 RPM = 300
-typedef uint16_t dashb_rpm_t;
-
 // [BCGV -> MUX] Alert flag
 typedef bool flag_t;
 
 void bcgv_init();
 
 /**
- * \brief Gets the cmd_warning value.
- * \details Returns the current state of the cmd_warning.
- * \return cmd_t : The cmd_warning value.
- */
-cmd_t get_cmd_warning();
-
-/**
- * \brief Sets the cmd_warning value.
- * \details Sets the cmd_warning to the given value.
- * \param value : The new value for the cmd_warning.
- */
-void set_cmd_warning(cmd_t value);
-
-/**
  * \brief Gets the cmd_position_light value.
  * \details Returns the current state of the cmd_position_light.
- * \return cmd_t : The cmd_position_light value.
+ * \return cmd_light_t : The cmd_position_light value.
  */
-cmd_t get_cmd_position_light();
+cmd_light_t get_cmd_position_light();
 
 /**
  * \brief Sets the cmd_position_light value.
  * \details Sets the cmd_position_light to the given value.
  * \param value : The new value for the cmd_position_light.
  */
-void set_cmd_position_light(cmd_t value);
+void set_cmd_position_light(cmd_light_t value);
 
 /**
- * \brief Gets the cmd_cross_light value.
- * \details Returns the current state of the cmd_cross_light.
- * \return cmd_t : The cmd_cross_light value.
+ * \brief Gets the cmd_crossing_light value.
+ * \details Returns the current state of the cmd_crossing_light.
+ * \return cmd_light_t : The cmd_crossing_light value.
  */
-cmd_t get_cmd_cross_light();
+cmd_light_t get_cmd_crossing_light();
 
 /**
- * \brief Sets the cmd_cross_light value.
- * \details Sets the cmd_cross_light to the given value.
- * \param value : The new value for the cmd_cross_light.
+ * \brief Sets the cmd_crossing_light value.
+ * \details Sets the cmd_crossing_light to the given value.
+ * \param value : The new value for the cmd_crossing_light.
  */
-void set_cmd_cross_light(cmd_t value);
+void set_cmd_crossing_light(cmd_light_t value);
 
 /**
- * \brief Gets the cmd_high_light value.
- * \details Returns the current state of the cmd_high_light.
- * \return cmd_t : The cmd_high_light value.
+ * \brief Gets the cmd_highbeam_light value.
+ * \details Returns the current state of the cmd_highbeam_light.
+ * \return cmd_light_t : The cmd_highbeam_light value.
  */
-cmd_t get_cmd_high_light();
+cmd_light_t get_cmd_highbeam_light();
 
 /**
- * \brief Sets the cmd_high_light value.
- * \details Sets the cmd_high_light to the given value.
- * \param value : The new value for the cmd_high_light.
+ * \brief Sets the cmd_highbeam_light value.
+ * \details Sets the cmd_highbeam_light to the given value.
+ * \param value : The new value for the cmd_highbeam_light.
  */
-void set_cmd_high_light(cmd_t value);
+void set_cmd_highbeam_light(cmd_light_t value);
 
 /**
- * \brief Gets the cmd_right_blinker value.
- * \details Returns the current state of the cmd_right_blinker.
- * \return cmd_t : The cmd_right_blinker value.
+ * \brief Gets the cmd_indic_right value.
+ * \details Returns the current state of the cmd_indic_right.
+ * \return cmd_indicator_t : The cmd_indic_right value.
  */
-cmd_t get_cmd_right_blinker();
+cmd_indicator_t get_cmd_indic_right();
 
 /**
- * \brief Sets the cmd_right_blinker value.
- * \details Sets the cmd_right_blinker to the given value.
- * \param value : The new value for the cmd_right_blinker.
+ * \brief Sets the cmd_indic_right value.
+ * \details Sets the cmd_indic_right to the given value.
+ * \param value : The new value for the cmd_indic_right.
  */
-void set_cmd_right_blinker(cmd_t value);
+void set_cmd_indic_right(cmd_indicator_t value);
 
 /**
- * \brief Gets the cmd_left_blinker value.
- * \details Returns the current state of the cmd_left_blinker.
- * \return cmd_t : The cmd_left_blinker value.
+ * \brief Gets the cmd_indic_left value.
+ * \details Returns the current state of the cmd_indic_left.
+ * \return cmd_indicator_t : The cmd_indic_left value.
  */
-cmd_t get_cmd_left_blinker();
+cmd_indicator_t get_cmd_indic_left();
 
 /**
- * \brief Sets the cmd_left_blinker value.
- * \details Sets the cmd_left_blinker to the given value.
- * \param value : The new value for the cmd_left_blinker.
+ * \brief Sets the cmd_indic_left value.
+ * \details Sets the cmd_indic_left to the given value.
+ * \param value : The new value for the cmd_indic_left.
  */
-void set_cmd_left_blinker(cmd_t value);
+void set_cmd_indic_left(cmd_indicator_t value);
+
+/**
+ * \brief Gets the cmd_indic_hazard value.
+ * \details Returns the current state of the cmd_indic_hazard.
+ * \return cmd_indicator_t : The cmd_indic_hazard value.
+ */
+cmd_indicator_t get_cmd_indic_hazard();
+
+/**
+ * \brief Sets the cmd_indic_hazard value.
+ * \details Sets the cmd_indic_hazard to the given value.
+ * \param value : The new value for the cmd_indic_hazard.
+ */
+void set_cmd_indic_hazard(cmd_indicator_t value);
 
 /**
  * \brief Gets the cmd_wiper value.
  * \details Returns the current state of the cmd_wiper.
- * \return cmd_t : The cmd_wiper value.
+ * \return cmd_wiper_t : The cmd_wiper value.
  */
-cmd_t get_cmd_wiper();
+cmd_wiper_t get_cmd_wiper();
 
 /**
  * \brief Sets the cmd_wiper value.
  * \details Sets the cmd_wiper to the given value.
  * \param value : The new value for the cmd_wiper.
  */
-void set_cmd_wiper(cmd_t value);
+void set_cmd_wiper(cmd_wiper_t value);
 
 /**
- * \brief Gets the cmd_windshield_washer value.
- * \details Returns the current state of the cmd_windshield_washer.
- * \return cmd_t : The cmd_windshield_washer value.
+ * \brief Gets the cmd_washer value.
+ * \details Returns the current state of the cmd_washer.
+ * \return cmd_washer_t : The cmd_washer value.
  */
-cmd_t get_cmd_windshield_washer();
+cmd_washer_t get_cmd_washer();
 
 /**
- * \brief Sets the cmd_windshield_washer value.
- * \details Sets the cmd_windshield_washer to the given value.
- * \param value : The new value for the cmd_windshield_washer.
+ * \brief Sets the cmd_washer value.
+ * \details Sets the cmd_washer to the given value.
+ * \param value : The new value for the cmd_washer.
  */
-void set_cmd_windshield_washer(cmd_t value);
+void set_cmd_washer(cmd_washer_t value);
 
 /**
  * \brief Gets the frame_number value.
@@ -251,72 +261,72 @@ void set_speed(speed_t value);
 /**
  * \brief Gets the chassis_issues value.
  * \details Returns the current state of the chassis_issues.
- * \return chassis_issues_t : The chassis_issues value.
+ * \return issues_t : The chassis_issues value.
  */
-chassis_issues_t get_chassis_issues();
+issues_t get_chassis_issues();
 
 /**
  * \brief Sets the chassis_issues value.
  * \details Sets the chassis_issues to the given value.
  * \param value : The new value for the chassis_issues.
  */
-void set_chassis_issues(chassis_issues_t value);
+void set_chassis_issues(issues_t value);
 
 /**
  * \brief Gets the motor_issues value.
  * \details Returns the current state of the motor_issues.
- * \return motor_issues_t : The motor_issues value.
+ * \return issues_t : The motor_issues value.
  */
-motor_issues_t get_motor_issues();
+issues_t get_motor_issues();
 
 /**
  * \brief Sets the motor_issues value.
  * \details Sets the motor_issues to the given value.
  * \param value : The new value for the motor_issues.
  */
-void set_motor_issues(motor_issues_t value);
+void set_motor_issues(issues_t value);
 
 /**
- * \brief Gets the motor_fuel value.
- * \details Returns the current state of the motor_fuel.
- * \return motor_fuel_t : The motor_fuel value.
+ * \brief Gets the fuel_level value.
+ * \details Returns the current state of the fuel_level.
+ * \return fuel_level_t : The fuel_level value.
  */
-motor_fuel_t get_motor_fuel();
+fuel_level_t get_fuel_level();
 
 /**
- * \brief Sets the motor_fuel value.
- * \details Sets the motor_fuel to the given value.
- * \param value : The new value for the motor_fuel.
+ * \brief Sets the fuel_level value.
+ * \details Sets the fuel_level to the given value.
+ * \param value : The new value for the fuel_level.
  */
-void set_motor_fuel(motor_fuel_t value);
+void set_fuel_level(fuel_level_t value);
 
 /**
- * \brief Gets the motor_rpm value.
- * \details Returns the current state of the motor_rpm.
- * \return motor_rpm_t : The motor_rpm value.
+ * \brief Gets the engine_rpm value.
+ * \details Returns the current state of the engine_rpm.
+ * \return engine_rpm_t : The engine_rpm value.
  */
-motor_rpm_t get_motor_rpm();
+engine_rpm_t get_engine_rpm();
 
 /**
- * \brief Sets the motor_rpm value.
- * \details Sets the motor_rpm to the given value.
- * \param value : The new value for the motor_rpm.
+ * \brief Sets the engine_rpm value.
+ * \details Sets the engine_rpm to the given value.
+ * \param value : The new value for the engine_rpm.
  */
-void set_motor_rpm(motor_rpm_t value);
+void set_engine_rpm(engine_rpm_t value);
 
 /**
  * \brief Gets the battery_issues value.
  * \details Returns the current state of the battery_issues.
- * \return battery_issues_t : The battery_issues value.
+ * \return issues_t : The battery_issues value.
  */
-battery_issues_t get_battery_issues();
+issues_t get_battery_issues();
 
 /**
  * \brief Sets the battery_issues value.
  * \details Sets the battery_issues to the given value.
  * \param value : The new value for the battery_issues.
  */
-void set_battery_issues(battery_issues_t value);
+void set_battery_issues(issues_t value);
 
 /**
  * \brief Gets the crc8 value.
@@ -333,31 +343,45 @@ crc8_t get_crc8();
 void set_crc8(crc8_t value);
 
 /**
- * \brief Gets the dashb_fuel value.
- * \details Returns the current state of the dashb_fuel.
- * \return dashb_fuel_t : The dashb_fuel value.
+ * \brief Gets the flag_position_light value.
+ * \details Returns the current state of the flag_position_light.
+ * \return flag_t : The flag_position_light value.
  */
-dashb_fuel_t get_dashb_fuel();
+flag_t get_flag_position_light();
 
 /**
- * \brief Sets the dashb_fuel value.
- * \details Sets the dashb_fuel to the given value.
- * \param value : The new value for the dashb_fuel.
+ * \brief Sets the flag_position_light value.
+ * \details Sets the flag_position_light to the given value.
+ * \param value : The new value for the flag_position_light.
  */
-void set_dashb_fuel(dashb_fuel_t value);
+void set_flag_position_light(flag_t value);
 
 /**
- * \brief Gets the dashb_rpm value.
- * \details Returns the current state of the dashb_rpm.
- * \return dashb_rpm_t : The dashb_rpm value.
+ * \brief Gets the flag_crossing_light value.
+ * \details Returns the current state of the flag_crossing_light.
+ * \return flag_t : The flag_crossing_light value.
  */
-dashb_rpm_t get_dashb_rpm();
+flag_t get_flag_crossing_light();
 
 /**
- * \brief Sets the dashb_rpm value.
- * \details Sets the dashb_rpm to the given value.
- * \param value : The new value for the dashb_rpm.
+ * \brief Sets the flag_crossing_light value.
+ * \details Sets the flag_crossing_light to the given value.
+ * \param value : The new value for the flag_crossing_light.
  */
-void set_dashb_rpm(dashb_rpm_t value);
+void set_flag_crossing_light(flag_t value);
+
+/**
+ * \brief Gets the flag_highbeam_light value.
+ * \details Returns the current state of the flag_highbeam_light.
+ * \return flag_t : The flag_highbeam_light value.
+ */
+flag_t get_flag_highbeam_light();
+
+/**
+ * \brief Sets the flag_highbeam_light value.
+ * \details Sets the flag_highbeam_light to the given value.
+ * \param value : The new value for the flag_highbeam_light.
+ */
+void set_flag_highbeam_light(flag_t value);
 
 #endif // BCGV_API_H
