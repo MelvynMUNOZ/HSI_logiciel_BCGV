@@ -2,7 +2,7 @@
  * \file        fsm_windshield_washer.c
  * \brief       Finite State Machine for windshield washer and wiper control
  * \details     Implementation of the FSM controlling wipers and washer states
- * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
+ * \author      Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
 #include "fsm_windshield_washer.h"
