@@ -1,5 +1,4 @@
 /**
- * \file        fsm_windshield_washer.h
  * \brief       Finite State Machine for windshield washer and wiper control
  * \details     Header file containing FSM states, events and function declarations
  * \author      Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
