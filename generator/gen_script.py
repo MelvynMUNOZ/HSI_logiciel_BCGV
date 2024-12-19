@@ -28,7 +28,10 @@ def create_global_variables(domaine, nom):
     if match:
         min_val, max_val = match.groups()
         var_name = nom.upper().replace("_T", "")
-        return f"#define {var_name}_MIN {min_val}\n#define {var_name}_MAX {max_val}\n\n"
+        if min_val == '0':
+            return f"#define {var_name}_MAX {max_val}\n\n"
+        else:
+            return f"#define {var_name}_MIN {min_val}\n#define {var_name}_MAX {max_val}\n\n"
     return ""
 
 # [bcgv_api.h] - A function that generates bcgv_api.h
@@ -37,7 +40,7 @@ def generate_bcgv_api_h(types_df, donnees_df):
  * \\file bcgv_api.h
  * \\brief Type definitions and context functions for project
  * \\details Contains all custom types, enumerations, and context initialization/accessor functions used in the project
- * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
+ * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
 #ifndef BCGV_API_H
@@ -89,7 +92,7 @@ def generate_bcgv_api_c(donnees_df, domain_values):
  * \\file bcgv_api.c
  * \\brief Context initialization and definitions for project
  * \\details Contains initialization and definition functions for all custom types and enumerations used in the project
- * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
+ * \\author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
 #include "bcgv_api.h"
@@ -109,7 +112,7 @@ void context_init() {
 """
     for _, row in donnees_df.iterrows():
         bcgv_api_c += f"    context.{row['Nom']} = {row['Valeur d\'init']};\n"
-    bcgv_api_c += "}\n\n// Getters and Setters"
+    bcgv_api_c += "}\n\n"
     
     # getters et setters
     for _, row in donnees_df.iterrows():
@@ -125,6 +128,9 @@ void set_{type_name.lower()}({type_def} value) {{
         if f"#define {var_name}_MIN" in domain_values and f"#define {var_name}_MAX" in domain_values:
             bcgv_api_c += f"    if (value >= {var_name}_MIN && value <= {var_name}_MAX) {{\n"
             bcgv_api_c += f"        context.{type_name.lower()} = value;\n    }}\n"
+        elif f"#define {var_name}_MAX" in domain_values:
+            bcgv_api_c += f"    if (value <= {var_name}_MAX) {{\n"
+            bcgv_api_c += f"        context.{type_name.lower()} = value;\n    }}\n"
         else:
             bcgv_api_c += f"    context.{type_name.lower()} = value;\n"
         bcgv_api_c += "}\n"
@@ -133,7 +139,7 @@ void set_{type_name.lower()}({type_def} value) {{
         file.write(bcgv_api_c)
 
 # Read the excel file
-file_path = 'app_struct.xlsx'
+file_path = 'app_types_data.xlsx'
 df = pd.read_excel(file_path, sheet_name=0)
 
 # Extract "TYPES" & "DONNEES" data
