@@ -31,12 +31,12 @@ typedef enum {
 typedef enum {
     EV_ANY = -1,                            /* Any event */
     EV_NONE = 0,                            /* No event */
-    EV_EVENT_POSITION_OK = 1,
-    EV_EVENT_POSITION_KO = 2,
-    EV_EVENT_CROSSING_OK = 3,
-    EV_EVENT_CROSSING_KO = 4,
-    EV_EVENT_HIGH_OK = 5,
-    EV_EVENT_HIGH_KO = 6,
+    EV_EVENT_POSITION_ON = 1,
+    EV_EVENT_POSITION_OFF = 2,
+    EV_EVENT_CROSSING_ON = 3,
+    EV_EVENT_CROSSING_OFF = 4,
+    EV_EVENT_HIGH_ON = 5,
+    EV_EVENT_HIGH_OFF = 6,
     EV_ERR = 255                            /* Error event */
 } fsm_event_t;
 
@@ -46,32 +46,32 @@ static int callback_init (void) {
     set_flag_crossing_light(0);
     set_flag_high_light(0);
 }
-static int callback_position_ok (void) { 
+static int callback_position_ON (void) { 
     set_flag_position_light(1);
     // set_flag_crossing_light(0);
     // set_flag_high_light(0);
 }
-static int callback_position_ko (void) { 
+static int callback_position_OFF (void) { 
     set_flag_position_light(0);
     // set_flag_crossing_light(0);
     // set_flag_high_light(0);
 }
-static int callback_crossing_ok (void) { 
+static int callback_crossing_ON (void) { 
     // set_flag_position_light(0);
     set_flag_crossing_light(1);
     // set_flag_high_light(0);
 }
-static int callback_crossing_ko (void) { 
+static int callback_crossing_OFF (void) { 
     // set_flag_position_light(0);
     set_flag_crossing_light(0);
     // set_flag_high_light(0);
 }
-static int callback_high_ok (void) { 
+static int callback_high_ON (void) { 
     // set_flag_position_light(0);
     // set_flag_crossing_light(0);
     set_flag_high_light(1);
 }
-static int callback_high_ko (void) { 
+static int callback_high_OFF (void) { 
     // set_flag_position_light(0);
     // set_flag_crossing_light(0);
     set_flag_high_light(0);
@@ -103,17 +103,17 @@ tTransition trans[] = {
 
     { ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
     
-    { ST_ALL_OFF, EV_EVENT_POSITION_OK, &callback_position_ok, ST_ONE_ON},
-    { ST_ONE_ON, EV_EVENT_POSITION_OK, &callback_position_ok, ST_ONE_ON_VERIFIED}, // a voir pour la callback
-    { ST_ONE_ON, EV_EVENT_POSITION_KO, &callback_init, ST_ALL_OFF},
+    { ST_ALL_OFF, EV_EVENT_POSITION_ON, &callback_position_ON, ST_ONE_ON},
+    { ST_ONE_ON, EV_EVENT_POSITION_ON, &callback_position_ON, ST_ONE_ON_VERIFIED}, // a voir pour la callback
+    { ST_ONE_ON, EV_EVENT_POSITION_OFF, &callback_init, ST_ALL_OFF},
 
-    { ST_ALL_OFF, EV_EVENT_CROSSING_OK, &callback_crossing_ok, ST_ONE_ON},
-    { ST_ONE_ON, EV_EVENT_CROSSING_OK, &callback_crossing_ok, ST_ONE_ON_VERIFIED}, // a voir pour la callback
-    { ST_ONE_ON, EV_EVENT_CROSSING_KO, &callback_init, ST_ALL_OFF},
+    { ST_ALL_OFF, EV_EVENT_CROSSING_ON, &callback_crossing_ON, ST_ONE_ON},
+    { ST_ONE_ON, EV_EVENT_CROSSING_ON, &callback_crossing_ON, ST_ONE_ON_VERIFIED}, // a voir pour la callback
+    { ST_ONE_ON, EV_EVENT_CROSSING_OFF, &callback_init, ST_ALL_OFF},
     
-    { ST_ALL_OFF, EV_EVENT_HIGH_OK, &callback_high_ok, ST_ONE_ON},
-    { ST_ONE_ON, EV_EVENT_HIGH_OK, &callback_high_ok, ST_ONE_ON_VERIFIED}, // a voir pour la callback
-    { ST_ONE_ON, EV_EVENT_HIGH_KO, &callback_init, ST_ALL_OFF},
+    { ST_ALL_OFF, EV_EVENT_HIGH_ON, &callback_high_ON, ST_ONE_ON},
+    { ST_ONE_ON, EV_EVENT_HIGH_ON, &callback_high_ON, ST_ONE_ON_VERIFIED}, // a voir pour la callback
+    { ST_ONE_ON, EV_EVENT_HIGH_OFF, &callback_init, ST_ALL_OFF},
 
     { ST_ONE_ON, EV_NONE, &FsmError, ST_TERM},
     { ST_ONE_ON_VERIFIED, EV_NONE, &callback_init, ST_ALL_OFF},
@@ -122,6 +122,22 @@ tTransition trans[] = {
 };
 
 #define TRANS_COUNT (sizeof(trans)/sizeof(*trans))
+
+bool is_all_light_OFF(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_high_light){
+    return cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 0;
+}
+
+bool is_position_light_ON(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_high_light){
+    return cmd_position_light == 1 && cmd_crossing_light == 0 && cmd_high_light == 0;
+}
+
+bool is_crossing_light_ON(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_high_light){
+    return cmd_position_light == 0 && cmd_crossing_light == 1 && cmd_high_light == 0;
+}
+
+bool is_high_light_ON(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_high_light){
+    return cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 1;
+}
 
 int get_next_event(int current_state)
 {
@@ -145,74 +161,74 @@ int get_next_event(int current_state)
         
     // }
     if (current_state == ST_ALL_OFF){
-        if(cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 0){
+        if(is_all_light_OFF(cmd_position_light, cmd_crossing_light, cmd_high_light)){
             event = EV_NONE;
         }
-        else if (cmd_position_light == 1 && cmd_crossing_light == 0 && cmd_high_light == 0)
+        else if (is_position_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         {
-            event = EV_EVENT_POSITION_OK;
+            event = EV_EVENT_POSITION_ON;
         }
-        else if (cmd_position_light == 0 && cmd_crossing_light == 1 && cmd_high_light == 0)
+        else if (is_crossing_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         {
-            event = EV_EVENT_CROSSING_OK;
+            event = EV_EVENT_CROSSING_ON;
         }
-        else if (cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 1)
+        else if (is_high_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         {
-            event = EV_EVENT_HIGH_OK;
+            event = EV_EVENT_HIGH_ON;
         }
         // else{
         //     event = EV_ERR;
         // }
     }
     else if (current_state == ST_ONE_ON){
-        if(cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 0){
+        if(is_all_light_OFF(cmd_position_light, cmd_crossing_light, cmd_high_light)){
             if (flag_position_light == 1){
-                event = EV_EVENT_POSITION_KO;
+                event = EV_EVENT_POSITION_OFF;
             }else if (flag_crossing_light == 1){
-                event = EV_EVENT_CROSSING_KO;
+                event = EV_EVENT_CROSSING_OFF;
             }else if(flag_high_light == 1){
-                event = EV_EVENT_HIGH_KO;
+                event = EV_EVENT_HIGH_OFF;
             }
         }
 
-        else if (flag_position_light == 1 && cmd_position_light == 1 && cmd_crossing_light == 0 && cmd_high_light == 0)
+        else if (flag_position_light == 1 && is_position_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         {
-            event = EV_EVENT_POSITION_OK;
+            event = EV_EVENT_POSITION_ON;
         }
-        else if (flag_crossing_light == 1 && cmd_position_light == 0 && cmd_crossing_light == 1 && cmd_high_light == 0)
+        else if (flag_crossing_light == 1 && is_crossing_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         {
-            event = EV_EVENT_CROSSING_OK;
+            event = EV_EVENT_CROSSING_ON;
         }
-        else if (flag_high_light == 1 && cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 1)
+        else if (flag_high_light == 1 && is_high_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         {
-            event = EV_EVENT_HIGH_OK;
+            event = EV_EVENT_HIGH_ON;
         }
         else{ 
             event = EV_ERR; //a voir
         }
     }
     else if (current_state == ST_ONE_ON_VERIFIED){
-        if(cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 0){
+        if(is_all_light_OFF(cmd_position_light, cmd_crossing_light, cmd_high_light)){
             if (flag_position_light == 1){
-                event = EV_EVENT_POSITION_KO;
+                event = EV_EVENT_POSITION_OFF;
             }else if (flag_crossing_light == 1){
-                event = EV_EVENT_CROSSING_KO;
+                event = EV_EVENT_CROSSING_OFF;
             }else if(flag_high_light == 1){
-                event = EV_EVENT_HIGH_KO;
+                event = EV_EVENT_HIGH_OFF;
             }
         }
         // TODO : voir si fait cette version là ou alors on fait les cas d'erreurs et le reste c'est NONE
-        // else if (flag_position_light == 1 && cmd_position_light == 1 && cmd_crossing_light == 0 && cmd_high_light == 0)
+        // else if (flag_position_light == 1 && is_position_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         // {
-        //     event = EV_EVENT_POSITION_OK;
+        //     event = EV_EVENT_POSITION_ON;
         // }
-        // else if (flag_crossing_light == 1 && cmd_position_light == 0 && cmd_crossing_light == 1 && cmd_high_light == 0)
+        // else if (flag_crossing_light == 1 && is_crossing_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         // {
-        //     event = EV_EVENT_CROSSING_OK;
+        //     event = EV_EVENT_CROSSING_ON;
         // }
-        // else if (flag_high_light == 1 && cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_high_light == 1)
+        // else if (flag_high_light == 1 && is_high_light_ON(cmd_position_light, cmd_crossing_light, cmd_high_light))
         // {
-        //     event = EV_EVENT_HIGH_OK;
+        //     event = EV_EVENT_HIGH_ON;
         // }
         // else{
         //     event = EV_ERR;
