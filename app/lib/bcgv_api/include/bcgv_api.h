@@ -19,33 +19,8 @@
 
 #define ENGINE_RPM_MAX 10000
 
-
-// Command to turn on/off lights (position, crossing, high beam)
-typedef enum {
-    LIGHT_OFF = 0,
-    LIGHT_ON = 1,
-} cmd_light_t;
-
-// Commands for indicators and hazard (warnings) lights 
-typedef enum {
-    INDICATOR_OFF = 0,
-    INDICATOR_LEFT = 1,
-    INDICATOR_RIGHT = 2,
-    INDICATOR_HAZARD = 3,
-} cmd_indicator_t;
-
-// Commands for windshield wipers
-typedef enum {
-    WIPER_OFF = 0,
-    WIPER_LOW = 1,
-    WIPER_HIGH = 2,
-} cmd_wiper_t;
-
 // Commands for windshield washer
-typedef enum {
-    WASHER_OFF = 0,
-    WASHER_ON = 1,
-} cmd_washer_t;
+typedef bool cmd_t;
 
 // Frame number looping 100->1
 typedef uint8_t frame_number_t;
@@ -57,14 +32,16 @@ typedef uint32_t distance_t;
 typedef uint8_t speed_t;
 
 // Chassis issues
-typedef enum {
+typedef enum
+{
     CHASSIS_ISSUE_NONE = 0,
     CHASSIS_ISSUE_TYRES = 1,
     CHASSIS_ISSUE_BRAKES = 2,
 } chassis_issues_t;
 
 // Motor issues
-typedef enum {
+typedef enum
+{
     MOTOR_ISSUE_NONE = 0,
     MOTOR_ISSUE_TYRES = 1,
     MOTOR_ISSUE_TEMPERATURE_LDR = 2,
@@ -81,7 +58,8 @@ typedef uint8_t fuel_level_t;
 typedef uint32_t engine_rpm_t;
 
 // Battery issues
-typedef enum {
+typedef enum
+{
     BATTERY_ISSUES_NONE = 0x0,
     BATTERY_ISSUES_DISCHARGED = 0x1,
     BATTERY_ISSUES_KO = 0x2,
@@ -91,13 +69,17 @@ typedef enum {
 typedef uint8_t crc8_t;
 
 // [BCGV -> BGF] Message ID
-typedef enum {
+typedef enum
+{
     BCGV_BGF_MSG_ID_1 = 0x01,
     BCGV_BGF_MSG_ID_2 = 0x02,
     BCGV_BGF_MSG_ID_3 = 0x03,
     BCGV_BGF_MSG_ID_4 = 0x04,
     BCGV_BGF_MSG_ID_5 = 0x05,
 } bcgv_bgf_msg_id_t;
+
+// Bit-carrying flag
+typedef uint8_t bit_flag_t;
 
 // [BCGV -> MUX] Alert flag
 typedef bool flag_t;
@@ -109,112 +91,112 @@ void bcgv_init();
  * \details Returns the current state of the cmd_position_light.
  * \return cmd_light_t : The cmd_position_light value.
  */
-cmd_light_t get_cmd_position_light();
+cmd_t get_cmd_position_light();
 
 /**
  * \brief Sets the cmd_position_light value.
  * \details Sets the cmd_position_light to the given value.
  * \param value : The new value for the cmd_position_light.
  */
-void set_cmd_position_light(cmd_light_t value);
+void set_cmd_position_light(cmd_t value);
 
 /**
  * \brief Gets the cmd_crossing_light value.
  * \details Returns the current state of the cmd_crossing_light.
- * \return cmd_light_t : The cmd_crossing_light value.
+ * \return cmd_t : The cmd_crossing_light value.
  */
-cmd_light_t get_cmd_crossing_light();
+cmd_t get_cmd_crossing_light();
 
 /**
  * \brief Sets the cmd_crossing_light value.
  * \details Sets the cmd_crossing_light to the given value.
  * \param value : The new value for the cmd_crossing_light.
  */
-void set_cmd_crossing_light(cmd_light_t value);
+void set_cmd_crossing_light(cmd_t value);
 
 /**
  * \brief Gets the cmd_highbeam_light value.
  * \details Returns the current state of the cmd_highbeam_light.
- * \return cmd_light_t : The cmd_highbeam_light value.
+ * \return cmd_t : The cmd_highbeam_light value.
  */
-cmd_light_t get_cmd_highbeam_light();
+cmd_t get_cmd_highbeam_light();
 
 /**
  * \brief Sets the cmd_highbeam_light value.
  * \details Sets the cmd_highbeam_light to the given value.
  * \param value : The new value for the cmd_highbeam_light.
  */
-void set_cmd_highbeam_light(cmd_light_t value);
-
-/**
- * \brief Gets the cmd_indic_right value.
- * \details Returns the current state of the cmd_indic_right.
- * \return cmd_indicator_t : The cmd_indic_right value.
- */
-cmd_indicator_t get_cmd_indic_right();
-
-/**
- * \brief Sets the cmd_indic_right value.
- * \details Sets the cmd_indic_right to the given value.
- * \param value : The new value for the cmd_indic_right.
- */
-void set_cmd_indic_right(cmd_indicator_t value);
+void set_cmd_highbeam_light(cmd_t value);
 
 /**
  * \brief Gets the cmd_indic_left value.
  * \details Returns the current state of the cmd_indic_left.
- * \return cmd_indicator_t : The cmd_indic_left value.
+ * \return cmd_t : The cmd_indic_left value.
  */
-cmd_indicator_t get_cmd_indic_left();
+cmd_t get_cmd_indic_left();
 
 /**
  * \brief Sets the cmd_indic_left value.
  * \details Sets the cmd_indic_left to the given value.
  * \param value : The new value for the cmd_indic_left.
  */
-void set_cmd_indic_left(cmd_indicator_t value);
+void set_cmd_indic_left(cmd_t value);
+
+/**
+ * \brief Gets the cmd_indic_right value.
+ * \details Returns the current state of the cmd_indic_right.
+ * \return cmd_t : The cmd_indic_right value.
+ */
+cmd_t get_cmd_indic_right();
+
+/**
+ * \brief Sets the cmd_indic_right value.
+ * \details Sets the cmd_indic_right to the given value.
+ * \param value : The new value for the cmd_indic_right.
+ */
+void set_cmd_indic_right(cmd_t value);
 
 /**
  * \brief Gets the cmd_indic_hazard value.
  * \details Returns the current state of the cmd_indic_hazard.
- * \return cmd_indicator_t : The cmd_indic_hazard value.
+ * \return cmd_t : The cmd_indic_hazard value.
  */
-cmd_indicator_t get_cmd_indic_hazard();
+cmd_t get_cmd_indic_hazard();
 
 /**
  * \brief Sets the cmd_indic_hazard value.
  * \details Sets the cmd_indic_hazard to the given value.
  * \param value : The new value for the cmd_indic_hazard.
  */
-void set_cmd_indic_hazard(cmd_indicator_t value);
+void set_cmd_indic_hazard(cmd_t value);
 
 /**
  * \brief Gets the cmd_wiper value.
  * \details Returns the current state of the cmd_wiper.
  * \return cmd_wiper_t : The cmd_wiper value.
  */
-cmd_wiper_t get_cmd_wiper();
+cmd_t get_cmd_wiper();
 
 /**
  * \brief Sets the cmd_wiper value.
  * \details Sets the cmd_wiper to the given value.
  * \param value : The new value for the cmd_wiper.
  */
-void set_cmd_wiper(cmd_wiper_t value);
+void set_cmd_wiper(cmd_t value);
 
 /**
  * \brief Gets the cmd_washer value.
  * \details Returns the current state of the cmd_washer.
- * \return cmd_washer_t : The cmd_washer value.
+ * \return cmd_t : The cmd_washer value.
  */
-cmd_washer_t get_cmd_washer();
+cmd_t get_cmd_washer();
 
 /**
  * \brief Sets the cmd_washer value.
  * \details Sets the cmd_washer to the given value.
  * \param value : The new value for the cmd_washer.
  */
-void set_cmd_washer(cmd_washer_t value);
+void set_cmd_washer(cmd_t value);
 
 /**
  * \brief Gets the frame_number value.
@@ -383,5 +365,61 @@ flag_t get_flag_highbeam_light();
  * \param value : The new value for the flag_highbeam_light.
  */
 void set_flag_highbeam_light(flag_t value);
+
+/**
+ * \brief Gets the flag_indic_left value.
+ * \details Returns the current state of the flag_indic_left.
+ * \return flag_t : The flag_indic_left value.
+ */
+flag_t get_flag_indic_left();
+
+/**
+ * \brief Sets the flag_indic_left value.
+ * \details Sets the flag_indic_left to the given value.
+ * \param value : The new value for the flag_indic_left.
+ */
+void set_flag_indic_left(flag_t value);
+
+/**
+ * \brief Gets the flag_indic_right value.
+ * \details Returns the current state of the flag_indic_right.
+ * \return flag_t : The flag_indic_right value.
+ */
+flag_t get_flag_indic_right();
+
+/**
+ * \brief Sets the flag_indic_right value.
+ * \details Sets the flag_indic_right to the given value.
+ * \param value : The new value for the flag_indic_right.
+ */
+void set_flag_indic_right(flag_t value);
+
+/**
+ * \brief Gets the flag_indic_hazard value.
+ * \details Returns the current state of the flag_indic_hazard.
+ * \return flag_t : The flag_indic_hazard value.
+ */
+flag_t get_flag_indic_hazard();
+
+/**
+ * \brief Sets the flag_indic_hazard value.
+ * \details Sets the flag_indic_hazard to the given value.
+ * \param value : The new value for the flag_indic_hazard.
+ */
+void set_flag_indic_hazard(flag_t value);
+
+/**
+ * \brief Gets the bit_flag_bgf_ack value.
+ * \details Returns the current state of the bit_flag_bgf_ack.
+ * \return bit_flag_t : The bit_flag_bgf_ack value.
+ */
+bit_flag_t get_bit_flag_bgf_ack();
+
+/**
+ * \brief Sets the bit_flag_bgf_ack value.
+ * \details Sets the bit_flag_bgf_ack to the given value.
+ * \param value : The new value for the bit_flag_bgf_ack.
+ */
+void set_bit_flag_bgf_ack(bit_flag_t value);
 
 #endif // BCGV_API_H
