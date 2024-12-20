@@ -10,7 +10,8 @@ BUILD_MODE := release
 SOURCES := \
 	app.c \
 	fsm/fsm_windshield_washer.c \
-	mux.c
+	mux.c \
+	crc8.c \
 
 
 #==============================================================================

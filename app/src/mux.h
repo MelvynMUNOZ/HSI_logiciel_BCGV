@@ -5,16 +5,16 @@
  * \author      Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
-#ifndef MUTEX_H
-#define MUTEX_H
+#ifndef MUX_H
+#define MUX_H
 
 #include "drv_api.h"
-#include "bcgv_api.h"
 
 /**
  * \brief Decode UDP frame from MUX and update application data
  * \param frame Pointer to the UDP frame buffer
+ * \return true if the frame was successfully decoded, false otherwise
  */
-void mux_decode(const uint8_t *frame);
+bool mux_decode(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE]);
 
-#endif // MUTEX_H
+#endif // MUX_H
