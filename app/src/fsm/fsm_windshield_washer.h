@@ -1,53 +1,60 @@
-#ifndef FSM_H
-#define FSM_H
+/**
+ * \file        fsm_windshield_washer.h
+ * \brief       Finite State Machine for windshield washer and wiper control
+ * \details     Header file containing FSM states, events and function declarations
+ */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
+#ifndef FSM_WINDSHIELD_WASHER_H
+#define FSM_WINDSHIELD_WASHER_H
 
-/* States */
-typedef enum {
-    ST_ANY = -1,                            /* Any state */
-    ST_INIT = 0,                            /* Init state */
-    ST_ALL_OFF = 1,
-    ST_WIPER_ON = 2,
-	ST_ALL_ON = 3,
-    ST_WAIT = 4,
-    ST_TERM = 255                           /* Final state */
-} fsm_windshield_state_t;
+#include "bcgv_api.h"
 
-/* Events */
-typedef enum {
-    EV_ANY = -1,                            /* Any event */
-    EV_NONE = 0,                            /* No event */
-    EV_CMD_EG_0 = 1,
-    EV_CMD_EG_1 = 2,
-	EV_CMD_LG_0 = 3,
-	EV_CMD_LG_1 = 4,
-	EV_T_OVER2SEC = 5,
-	EV_T_UNDER2SEC = 6,
-    EV_ERR = 255                            /* Error event */
-} fsm_windshield_event_t;
+/* States for debug prints */
+typedef enum
+{
+    ST_ANY = -1,                /* Any state */
+    ST_ALL_OFF = 0,             /* Initial state: everything off */
+    ST_WIPER_ON = 1,            /* Only wipers active */
+    ST_WASHER_AND_WIPER_ON = 2, /* Both washer and wipers active */
+    ST_WIPER_TIMER = 3,         /* Wipers active with timer */
+    ST_TERM = 255               /* Terminal state (not used) */
+} fsm_state_t;
+
+/* Events for debug prints */
+typedef enum
+{
+    EV_ANY = -1,       /* Any event */
+    EV_NONE = 0,       /* No event */
+    EV_CMD_WIPER = 1,  /* Wiper command change */
+    EV_CMD_WASHER = 2, /* Washer command change */
+    EV_TIMER_2SEC = 3, /* 2-second timer expired */
+    EV_ERR = 255       /* Error event */
+} fsm_event_t;
 
 /**
-* \brief Function to initialize and start the state machine.
-* \details 
-* \return int8_t : Finite state machine state returned as an integer
-*/
-int8_t fsm_windshield_start(void);
-
+ * \brief Initialize the windshield washer FSM
+ * \details Must be called once before using the FSM
+ */
+void fsm_windshield_washer_init(void);
 
 /**
-* \brief Function to trigger an event on the state machine.
-* \details 
-* \param state : Current state of the state machine
-* \param focus_point : 0 to evaluate eg_status, 1 to evaluate lg_status, 2 to evaluate t_status, anything else trigger "EV_NONE" event
-* \param eg_status : 0 to trigger "EV_CMD_EG_1", 1 to trigger "EV_CMD_EG_1"
-* \param lg_status : 0 to trigger "EV_CMD_LG_0", 1 to trigger "EV_CMD_LG_1"
-* \param t_status : 0 to trigger "EV_T_UNDER2SEC", 1 to trigger "EV_T_OVER2SEC"
-* \return int8_t : New state of the state machine returned as an integer
-*/
-/* Function to trigger an event in the state machine */
-int8_t fsm_windshield_trigger_event(int8_t state,int8_t focus_point,int8_t eg_status,int8_t lg_status,int8_t t_status);
+ * \brief Periodic update function for the windshield washer FSM
+ * \details Should be called every 100ms by the main application
+ */
+void fsm_windshield_washer_update(void);
 
-#endif /* FSM_H f*/
+/**
+ * \brief Get current state name for debug prints
+ * \param state State enum value
+ * \return String representation of the state
+ */
+const char *fsm_get_state_name(fsm_state_t state);
+
+/**
+ * \brief Get event name for debug prints
+ * \param event Event enum value
+ * \return String representation of the event
+ */
+const char *fsm_get_event_name(fsm_event_t event);
+
+#endif // FSM_WINDSHIELD_WASHER_H

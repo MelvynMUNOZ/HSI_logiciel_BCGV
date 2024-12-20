@@ -5,8 +5,12 @@
  * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
+#include <stdio.h>
+
 #include "drv_api.h"
 #include "bcgv_api.h"
+#include "mux.h"
+#include "fsm_windshield_washer.h"
 
 int main(void)
 {
@@ -15,6 +19,8 @@ int main(void)
     uint8_t udp_frame[DRV_UDP_100MS_FRAME_SIZE];
 
     /***** Starting application *****/
+
+    printf("INFO: Starting application\n");
 
     driver_fd = drv_open();
     if (driver_fd == DRV_ERROR)
@@ -30,23 +36,40 @@ int main(void)
 
     printf("INFO: driver opened\n");
 
+    /* Initialize FSM */
+    fsm_windshield_washer_init();
+    printf("INFO: FSM initialized\n");
+
+    /* bcgv_init(); */
+    // printf("INFO: BCGV initialized\n");
+
     /***** Main loop *****/
 
+    printf("INFO: Entering main loop\n");
     while (1)
     {
         ret = drv_read_udp_100ms(driver_fd, udp_frame);
         if (ret == DRV_ERROR)
         {
-            printf("ERROR: failed to read upd frame 100ms\n");
+            printf("ERROR: failed to read UDP frame 100ms\n");
             continue;
         }
 
-        printf("MUX > [");
+        printf("\nDEBUG: Received new UDP frame:\n");
+        printf("Raw data: ");
         for (size_t i = 0; i < DRV_UDP_100MS_FRAME_SIZE; i++)
         {
-            printf("%c", udp_frame[i]); // TODO: decode frame received from MUX. Now just prints as char each byte.
+            printf("%02X ", udp_frame[i]);
         }
-        printf("]\n");
+        printf("\n\n");
+
+        /* Decode frame and update application data */
+        mux_decode(udp_frame);
+
+        /* Update FSM */
+        fsm_windshield_washer_update();
+
+        printf("\n----------------------------------------\n");
     }
 
     /***** Closing application *****/
@@ -58,7 +81,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    printf("INFO: driver closed");
+    printf("INFO: driver closed\n");
 
     return EXIT_SUCCESS;
 }

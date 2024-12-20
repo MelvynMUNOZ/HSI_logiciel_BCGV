@@ -1,198 +1,206 @@
 /**
- * \file        fsm_windshield_wiper.c
- * \brief       A Finite State Machine for the windshield wiper.
- * \details     Contains states and callback functions to control windshield wiper.
- * \author      Raphael CAUSSE - Melvyn MUNOZ - Roland Cédric TAYO
+ * \file        fsm_windshield_washer.c
+ * \brief       Finite State Machine for windshield washer and wiper control
+ * \details     Implementation of the FSM controlling wipers and washer states
  */
 
 #include "fsm_windshield_washer.h"
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
 
-/* States */
-// typedef enum {
-//     ST_ANY = -1,                            /* Any state */
-//     ST_INIT = 0,                            /* Init state */
-//     ST_ALL_OFF = 1,
-//     ST_WIPER_ON = 2,
-// 	ST_ALL_ON = 3,
-//     ST_WAIT = 4,
-//     ST_TERM = 255                           /* Final state */
-// } fsm_windshield_state_t;
+/* Static variables */
+static uint32_t timer_counter = 0;
+static const uint32_t TIMER_2SEC = 20; // 20 * 100ms = 2 seconds
 
-/* Events */
-// typedef enum {
-//     EV_ANY = -1,                            /* Any event */
-//     EV_NONE = 0,                            /* No event */
-//     EV_CMD_EG_0 = 1,
-//     EV_CMD_EG_1 = 2,
-// 	EV_CMD_LG_0 = 3,
-// 	EV_CMD_LG_1 = 4,
-// 	EV_T_OVER2SEC = 5,
-// 	EV_T_UNDER2SEC = 6,
-//     EV_ERR = 255                            /* Error event */
-// } fsm_windshield_event_t;
+/* Debug string arrays for states and events */
+static const char *STATE_NAMES[] = {
+	[ST_ALL_OFF] = "ALL_OFF",
+	[ST_WIPER_ON] = "WIPER_ON",
+	[ST_WASHER_AND_WIPER_ON] = "WASHER_AND_WIPER_ON",
+	[ST_WIPER_TIMER] = "WIPER_TIMER"};
 
-/**
-* \brief Function to print state machine status info.
-* \details Only for debug, message written in french
-*/
-/* Callback functions called on transitions */
-static int8_t callback_ALL_OFF (void) {printf("Passage à l'état TOUS ETEINTS\n");};
-static int8_t callback_WIPER_ON (void) {printf("Passage à l'état ESSUIE-GLACES ACTIVES\n");};
-static int8_t callback_ALL_ON (void) {printf("Passage à l'état LAVE GLACES + ESSUIE-GLACES ACTIVES\n");};
-static int8_t callback_WAIT (void) {printf("Passage à l'état TIMER ESSUIE GLACES & LAVE GLACES ETEINTS\n");};
-static int8_t FsmError(void) {printf("Erreur. Passage à l'état TERM\n");};
+static const char *EVENT_NAMES[] = {
+	[EV_NONE] = "NONE",
+	[EV_CMD_WIPER] = "CMD_WIPER",
+	[EV_CMD_WASHER] = "CMD_WASHER",
+	[EV_TIMER_2SEC] = "TIMER_2SEC"};
+
+/* Callback functions for state transitions */
+static int handle_all_off(void)
+{
+	printf("DEBUG: FSM - Executing ALL_OFF actions\n");
+	set_cmd_wiper(WIPER_OFF);
+	set_cmd_washer(WASHER_OFF);
+	timer_counter = 0;
+	return 0;
+}
+
+static int handle_wiper_on(void)
+{
+	printf("DEBUG: FSM - Executing WIPER_ON actions\n");
+	set_cmd_wiper(WIPER_LOW);
+	set_cmd_washer(WASHER_OFF);
+	timer_counter = 0;
+	return 0;
+}
+
+static int handle_washer_and_wiper_on(void)
+{
+	printf("DEBUG: FSM - Executing WASHER_AND_WIPER_ON actions\n");
+	set_cmd_wiper(WIPER_LOW);
+	set_cmd_washer(WASHER_ON);
+	timer_counter = 0;
+	return 0;
+}
+
+static int handle_wiper_timer(void)
+{
+	printf("DEBUG: FSM - Executing WIPER_TIMER actions (counter: %lu)\n", (unsigned long)timer_counter);
+	set_cmd_wiper(WIPER_LOW);
+	set_cmd_washer(WASHER_OFF);
+	timer_counter++;
+	return 0;
+}
+
+static int handle_error(void)
+{
+	printf("ERROR: FSM - Error condition triggered\n");
+	set_cmd_wiper(WIPER_OFF);
+	set_cmd_washer(WASHER_OFF);
+	timer_counter = 0;
+	return -1;
+}
 
 /* Transition structure */
-typedef struct {
-    fsm_windshield_state_t state;
-    fsm_windshield_event_t event;
-    int8_t (*callback)(void);
-    int8_t next_state;
+typedef struct
+{
+	fsm_state_t state;
+	fsm_event_t event;
+	int (*callback)(void);
+	fsm_state_t next_state;
 } tTransition;
 
 /* Transition table */
-tTransition trans[] = {
-    /* Transitions */
-    { ST_ALL_OFF, EV_CMD_EG_0, &callback_ALL_OFF, ST_ALL_OFF},
-	{ ST_ALL_OFF, EV_CMD_LG_0, &callback_ALL_OFF, ST_ALL_OFF},
-	{ ST_ALL_OFF, EV_CMD_EG_1, &callback_WIPER_ON, ST_WIPER_ON},
-	{ ST_ALL_OFF, EV_CMD_LG_1, &callback_ALL_ON, ST_ALL_ON},
-	
-    { ST_WIPER_ON, EV_CMD_EG_1, &callback_WIPER_ON, ST_WIPER_ON},
-	{ ST_WIPER_ON, EV_CMD_EG_0, &callback_ALL_OFF, ST_ALL_OFF},
-	{ ST_WIPER_ON, EV_CMD_LG_1, &callback_ALL_ON, ST_ALL_ON},
-	
-	{ ST_ALL_ON, EV_CMD_LG_1, &callback_ALL_ON, ST_ALL_ON},
-	{ ST_ALL_ON, EV_CMD_LG_0, &callback_WAIT, ST_WAIT},
+static tTransition trans[] = {
+	{ST_ALL_OFF, EV_CMD_WIPER, &handle_wiper_on, ST_WIPER_ON},
+	{ST_ALL_OFF, EV_CMD_WASHER, &handle_washer_and_wiper_on, ST_WASHER_AND_WIPER_ON},
+	{ST_WIPER_ON, EV_CMD_WIPER, &handle_all_off, ST_ALL_OFF},
+	{ST_WIPER_ON, EV_CMD_WASHER, &handle_washer_and_wiper_on, ST_WASHER_AND_WIPER_ON},
+	{ST_WASHER_AND_WIPER_ON, EV_CMD_WASHER, &handle_wiper_timer, ST_WIPER_TIMER},
+	{ST_WIPER_TIMER, EV_TIMER_2SEC, &handle_all_off, ST_ALL_OFF},
+	{ST_WIPER_TIMER, EV_CMD_WIPER, &handle_wiper_on, ST_WIPER_ON},
+	{ST_WIPER_TIMER, EV_CMD_WASHER, &handle_washer_and_wiper_on, ST_WASHER_AND_WIPER_ON},
+	{ST_ANY, EV_ERR, &handle_error, ST_ALL_OFF}};
 
-	{ ST_WAIT, EV_T_UNDER2SEC, &callback_WAIT, ST_WAIT},
-	{ ST_WAIT, EV_CMD_LG_1, &callback_ALL_ON, ST_ALL_ON},
-	{ ST_WAIT, EV_T_OVER2SEC, &callback_ALL_OFF, ST_ALL_OFF},
-	
-	{ ST_ANY, EV_ERR, &FsmError, ST_TERM}
-};
+#define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
 
-#define TRANS_COUNT (sizeof(trans)/sizeof(*trans))
+/* Static variables for FSM state */
+static fsm_state_t current_state = ST_ALL_OFF;
+static cmd_wiper_t last_wiper_cmd = WIPER_OFF;
+static cmd_washer_t last_washer_cmd = WASHER_OFF;
 
-/**
-* \brief Function to find the current event for the state machine.
-* \details 
-* \param focus_point : 0 to evaluate eg_status, 1 to evaluate lg_status, 2 to evaluate t_status, anything else trigger "EV_NONE" event
-* \param eg_status : 0 to trigger "EV_CMD_EG_1", 1 to trigger "EV_CMD_EG_1"
-* \param lg_status : 0 to trigger "EV_CMD_LG_0", 1 to trigger "EV_CMD_LG_1"
-* \param t_status : 0 to trigger "EV_T_UNDER2SEC", 1 to trigger "EV_T_OVER2SEC"
-* \return int8_t : Event returned as an integer for the state machine
-*/
-int8_t get_next_event (int8_t focus_point,int8_t eg_status,int8_t lg_status, int8_t t_status)
+const char *fsm_get_state_name(fsm_state_t state)
 {
-	int8_t event = EV_NONE;
-	
-	if (focus_point == 0){
-		if (eg_status == 0){
-			event = EV_CMD_EG_0;
-		}
-		else if (eg_status == 1){
-			event = EV_CMD_EG_1;
-		}
-	} else if (focus_point == 1){
-		if (lg_status == 0){
-			event = EV_CMD_LG_0;
-		}
-		else if (lg_status == 1){
-			event = EV_CMD_LG_1;
-		}
-	} else if (focus_point == 2){
-		if (lg_status == 0){
-			event = EV_T_UNDER2SEC;
-		}
-		else if (lg_status == 1){
-			event = EV_T_OVER2SEC;
+	if (state == ST_ANY)
+		return "ANY";
+	if (state == ST_TERM)
+		return "TERM";
+	if (state >= 0 && state <= ST_WIPER_TIMER)
+		return STATE_NAMES[state];
+	return "UNKNOWN";
+}
+
+const char *fsm_get_event_name(fsm_event_t event)
+{
+	if (event == EV_ANY)
+		return "ANY";
+	if (event == EV_ERR)
+		return "ERROR";
+	if (event >= 0 && event <= EV_TIMER_2SEC)
+		return EVENT_NAMES[event];
+	return "UNKNOWN";
+}
+
+static fsm_event_t get_next_event(fsm_state_t current_state)
+{
+	fsm_event_t event = EV_NONE;
+
+	cmd_wiper_t current_wiper_cmd = get_cmd_wiper();
+	cmd_washer_t current_washer_cmd = get_cmd_washer();
+
+	if (current_wiper_cmd != last_wiper_cmd)
+	{
+		printf("DEBUG: FSM - Wiper command changed: %d -> %d\n", last_wiper_cmd, current_wiper_cmd);
+		last_wiper_cmd = current_wiper_cmd;
+		if (current_wiper_cmd != WIPER_OFF)
+		{
+			event = EV_CMD_WIPER;
 		}
 	}
-	
+	else if (current_washer_cmd != last_washer_cmd)
+	{
+		printf("DEBUG: FSM - Washer command changed: %d -> %d\n", last_washer_cmd, current_washer_cmd);
+		last_washer_cmd = current_washer_cmd;
+		if (current_washer_cmd != WASHER_OFF)
+		{
+			event = EV_CMD_WASHER;
+		}
+	}
+
+	if (current_state == ST_WIPER_TIMER && timer_counter >= TIMER_2SEC)
+	{
+		printf("DEBUG: FSM - 2-second timer expired\n");
+		event = EV_TIMER_2SEC;
+	}
+
 	return event;
 }
 
-/**
-* \brief Function to trigger an event on the state machine.
-* \details 
-* \param state : Current state of the state machine
-* \param focus_point : food for get_next_event()
-* \param eg_status : food for get_next_event()
-* \param lg_status : food for get_next_event()
-* \param t_status : food for get_next_event()
-* \return int8_t : New state of the state machine returned as an integer
-*/
-int8_t fsm_windshield_trigger_event (int8_t state,int8_t focus_point,int8_t eg_status,int8_t lg_status, int8_t t_status)
+void fsm_windshield_washer_init(void)
 {
-	int8_t i = 0;
-    int8_t ret = 0; 
-    int8_t event = EV_NONE;
-	
-	/* Check if FSM hasn't reach end state */
-    if (state != ST_TERM) {
-		/* Get event */
-		event = get_next_event(focus_point,eg_status,lg_status,t_status);
-		
-		/* For each transitions */
-		for (i = 0; i < TRANS_COUNT; i++) {
-			/* If State is current state OR The transition applies to all states ...*/
-			if ((state == trans[i].state) || (ST_ANY == trans[i].state)) {
-				/* If event is the transition event OR the event applies to all */
-				if ((event == trans[i].event) || (EV_ANY == trans[i].event)) {
-					/* Apply the new state */
-					state = trans[i].next_state;
-					if (trans[i].callback != NULL) {
-						/* Call the state function */
-						ret = (trans[i].callback)();
-					}
-					break;
+	printf("INFO: FSM - Initializing windshield washer FSM\n");
+	current_state = ST_ALL_OFF;
+	last_wiper_cmd = WIPER_OFF;
+	last_washer_cmd = WASHER_OFF;
+	timer_counter = 0;
+	handle_all_off();
+}
+
+void fsm_windshield_washer_update(void)
+{
+	uint32_t i;
+	fsm_event_t event;
+
+	event = get_next_event(current_state);
+
+	if (event != EV_NONE)
+	{
+		printf("DEBUG: FSM - State: %s, Event: %s\n",
+			   fsm_get_state_name(current_state),
+			   fsm_get_event_name(event));
+	}
+
+	for (i = 0; i < TRANS_COUNT; i++)
+	{
+		if ((current_state == trans[i].state) || (ST_ANY == trans[i].state))
+		{
+			if ((event == trans[i].event) || (EV_ANY == trans[i].event))
+			{
+				fsm_state_t next_state = trans[i].next_state;
+				if (event != EV_NONE)
+				{
+					printf("INFO: FSM - Transition: %s -> %s\n",
+						   fsm_get_state_name(current_state),
+						   fsm_get_state_name(next_state));
 				}
+				current_state = next_state;
+				if (trans[i].callback != NULL)
+				{
+					trans[i].callback();
+				}
+				break;
 			}
 		}
 	}
-	
-	return state;
-}
-
-/**
-* \brief Function to initialize and start the state machine.
-* \details 
-* \return int8_t : Finite state machine state returned as an integer
-*/
-int main(void)
-{
-    int i = 0;
-    int ret = 0; 
-    int event = EV_NONE;
-    int state = ST_INIT;
-    
-    /* While FSM hasn't reach end state */
-    while (state != ST_TERM) {
-        
-        /* Get event */
-        event = get_next_event(0, 0, 0, 0);
-        
-        /* For each transitions */
-        for (i = 0; i < TRANS_COUNT; i++) {
-            /* If State is current state OR The transition applies to all states ...*/
-            if ((state == trans[i].state) || (ST_ANY == trans[i].state)) {
-                /* If event is the transition event OR the event applies to all */
-                if ((event == trans[i].event) || (EV_ANY == trans[i].event)) {
-                    /* Apply the new state */
-                    state = trans[i].next_state;
-                    if (trans[i].callback != NULL) {
-                        /* Call the state function */
-                        ret = (trans[i].callback)();
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    return ret;
 }
