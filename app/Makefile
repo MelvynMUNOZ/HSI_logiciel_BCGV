@@ -8,7 +8,8 @@ BUILD_MODE := release
 
 # Define source files to compile
 SOURCES := \
-	app.c
+	app.c \
+	comodo.c \
 
 
 #==============================================================================

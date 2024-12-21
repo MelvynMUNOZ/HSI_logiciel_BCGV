@@ -5,6 +5,8 @@
  * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
+#include <stdio.h>
+
 #include "drv_api.h"
 #include "bcgv_api.h"
 #include "comodo.h"
@@ -18,7 +20,7 @@ int main(void)
 
     /***** Starting application *****/
 
-    context_init(); // Initialize the context
+    printf("INFO: Starting application\n");
 
     driver_fd = drv_open();
     if (driver_fd == DRV_ERROR)
@@ -34,36 +36,41 @@ int main(void)
 
     printf("INFO: driver opened\n");
 
+    /* bcgv_init(); */
+    // printf("INFO: BCGV initialized\n");
+
     /***** Main loop *****/
 
+    printf("INFO: Entering main loop\n");
     while (1)
     {
         ret = drv_read_udp_100ms(driver_fd, udp_frame);
         if (ret == DRV_ERROR)
         {
-            printf("ERROR: failed to read udp frame 100ms\n");
+            printf("ERROR: failed to read UDP frame 100ms\n");
             continue;
         }
 
-        printf("MUX > [");
+        printf("\nDEBUG: Received new UDP frame:\n");
+        printf("Raw data: ");
         for (size_t i = 0; i < DRV_UDP_100MS_FRAME_SIZE; i++)
         {
-            printf("%c", udp_frame[i]); // Print each byte as a character for now
+            printf("%02X ", udp_frame[i]);
         }
-        printf("]\n");
+        printf("\n\n");
 
-        // Assuming the COMODO frame is part of the UDP frame, extract and decode it
-        comodo_frame[0] = udp_frame[0]; // Example extraction logic
-        if (!comodo_decode(comodo_frame))
+        /* Decode and display comodo frame */
+        comodo_frame[0] = udp_frame[0]; // Example extraction logic, adjust as needed
+        if (comodo_decode(comodo_frame))
         {
-            printf("ERROR: failed to decode COMODO frame\n");
+            printf("DEBUG: Successfully decoded COMODO frame.\n");
+        }
+        else
+        {
+            printf("ERROR: Failed to decode COMODO frame.\n");
         }
 
-        // Decode the rest of the UDP frame and update application data
-        if (!mux_decode(udp_frame))
-        {
-            printf("ERROR: failed to decode MUX frame\n");
-        }
+        printf("\n----------------------------------------\n");
     }
 
     /***** Closing application *****/
