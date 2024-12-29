@@ -29,9 +29,9 @@ def create_global_variables(domaine, nom):
         min_val, max_val = match.groups()
         var_name = nom.upper().replace("_T", "")
         if min_val == '0':
-            return f"#define {var_name}_MAX {max_val}\n\n"
+            return f"#define {var_name}_MAX ({max_val})\n\n"
         else:
-            return f"#define {var_name}_MIN {min_val}\n#define {var_name}_MAX {max_val}\n\n"
+            return f"#define {var_name}_MIN ({min_val})\n#define {var_name}_MAX ({max_val})\n\n"
     return ""
 
 # [bcgv_api.h] - A function that generates bcgv_api.h
@@ -63,7 +63,11 @@ def generate_bcgv_api_h(types_df, donnees_df):
             enum_values = ',\n    '.join(map(str.strip, declaration.split(',')))
             bcgv_api_h += f"typedef enum {{\n    {enum_values},\n}} {nom};\n"
     
-    bcgv_api_h += """\nvoid bcgv_init();
+    bcgv_api_h += """\n/**
+ * \\brief Initialize context.
+ * \\brief Initialize context variables for the api.
+ */
+void bcgv_ctx_init();
 """
     for _, row in donnees_df.iterrows():
         type_name, type_def = row['Nom'], row['Type']
@@ -108,7 +112,7 @@ typedef struct {
 // Global context structure instance
 static context_t context;
 
-void context_init() {
+void bcgv_ctx_init() {
 """
     for _, row in donnees_df.iterrows():
         bcgv_api_c += f"    context.{row['Nom']} = {row['Valeur d\'init']};\n"

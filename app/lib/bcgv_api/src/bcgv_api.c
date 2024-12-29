@@ -32,13 +32,13 @@ typedef struct {
     flag_t flag_indic_left; // Left turn indicator flag
     flag_t flag_indic_right; // Right turn Indicator flag
     flag_t flag_indic_hazard; // Hazard (warnings) lights flag
-    bit_flag_t bit_flag_bgf_ack; // BGF flags set as bits, bit-carrying
+    bit_flag_t bit_flag_bgf_ack; // BGF acknowledgement flags, bit-carrying
 } context_t;
 
 // Global context structure instance
 static context_t context;
 
-void context_init() {
+void bcgv_ctx_init() {
     context.cmd_position_light = 0;
     context.cmd_crossing_light = 0;
     context.cmd_highbeam_light = 0;
