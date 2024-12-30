@@ -1,6 +1,6 @@
 /**
  * \file fsm_indicators.c
- * \brief Finite state machine for indicators (hazard, left and right).
+ * \brief Finite state machine for indicators (hazard/warnings, left and right).
  * \details Handle states, events and transitions for the FSM.
  * \author Raphael CAUSSE
  */
@@ -14,9 +14,6 @@
 #define OFF (false)
 
 #define TIMER_1S_COUNT_100MS (10)
-
-/* Timer for 1 second delay, increment each 100ms */
-static uint32_t timer_count = 0;
 
 /* States */
 typedef enum
@@ -45,14 +42,17 @@ typedef enum
     EV_ERR = 255         /* Error event */
 } fsm_event_t;
 
-/* Callback functions called on transitions */
+/* Static variables for the FSM */
+static fsm_state_t state = ST_INIT; /* State of the FSM */
+static uint8_t timer_counter = 0;   /* Timer for 1 second delay, increment each 100ms */
 
+/* Callback functions called on transitions */
 static int callback_init(void)
 {
     set_flag_indic_hazard(OFF);
     set_flag_indic_left(OFF);
     set_flag_indic_right(OFF);
-    timer_count = 0;
+    timer_counter = 0;
     return 0;
 }
 
@@ -102,13 +102,13 @@ static int callback_cmd_off(void)
 
 static int callback_ack_received(void)
 {
-    /* Timer count persists, wait 1sec, includes ack waiting time */
+    /* Timer counter persists, wait 1sec including ack waiting time */
     return 0;
 }
 
 static int callback_ack_not_received(void)
 {
-    timer_count = 0;
+    timer_counter = 0;
     return 0;
 }
 
@@ -117,7 +117,6 @@ static int callback_timeout(void)
     cmd_t cmd_hazard = get_cmd_indic_hazard();
     cmd_t cmd_left = get_cmd_indic_left();
     cmd_t cmd_right = get_cmd_indic_right();
-
     flag_t flag_hazard = get_flag_indic_hazard();
     flag_t flag_left = get_flag_indic_left();
     flag_t flag_right = get_flag_indic_right();
@@ -127,25 +126,25 @@ static int callback_timeout(void)
     {
         set_flag_indic_hazard(!flag_hazard);
     }
-    else if (cmd_left == ON)
+    if (cmd_left == ON)
     {
         set_flag_indic_left(!flag_left);
     }
-    else if (cmd_right == ON)
+    if (cmd_right == ON)
     {
         set_flag_indic_right(!flag_right);
     }
 
-    timer_count = 0;
+    timer_counter = 0;
 
     return 0;
 }
 
 static int callback_error(void)
 {
+    set_flag_indic_hazard(OFF);
     set_flag_indic_left(OFF);
     set_flag_indic_right(OFF);
-    set_flag_indic_hazard(OFF);
     return -1;
 }
 
@@ -156,10 +155,10 @@ typedef struct
     fsm_event_t event;
     int (*callback)(void);
     int next_state;
-} tTransition;
+} transition_t;
 
 /* Transition table */
-tTransition trans[] = {
+transition_t trans[] = {
     {ST_INIT, EV_NONE, &callback_init, ST_OFF},
     {ST_OFF, EV_CMD_ON, &callback_cmd_on, ST_ACTIVATED_ON},
     {ST_ACTIVATED_ON, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
@@ -173,6 +172,7 @@ tTransition trans[] = {
     {ST_ACKNOWLEDGED_OFF, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
     {ST_ACKNOWLEDGED_OFF, EV_TIMEOUT, &callback_timeout, ST_ACTIVATED_ON},
     {ST_ERROR, EV_ERR, &callback_error, ST_TERM},
+    {ST_ANY, EV_ERR, &callback_error, ST_TERM},
 };
 
 #define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
@@ -182,23 +182,21 @@ tTransition trans[] = {
  * \param current_state : Current FSM state.
  * \return fsm_event_t : Next event value.
  */
-fsm_event_t get_next_event(int current_state)
+fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
-
     cmd_t cmd_left = get_cmd_indic_left();
     cmd_t cmd_right = get_cmd_indic_right();
     cmd_t cmd_hazard = get_cmd_indic_hazard();
-
     bit_flag_t bgf_ack = get_bit_flag_bgf_ack();
 
     /* Common checks for all states */
     bool hazard_on = (cmd_hazard == ON);
     bool left_on = (cmd_left == ON);
     bool right_on = (cmd_right == ON);
-    bool hazard_ack = (bgf_ack & BGF_ACK_INDIC_HAZARD);
-    bool left_ack = (bgf_ack & BGF_ACK_INDIC_LEFT);
-    bool right_ack = (bgf_ack & BGF_ACK_INDIC_RIGHT);
+    bool hazard_ack = (bgf_ack AND BGF_ACK_INDIC_HAZARD);
+    bool left_ack = (bgf_ack AND BGF_ACK_INDIC_LEFT);
+    bool right_ack = (bgf_ack AND BGF_ACK_INDIC_RIGHT);
 
     switch (current_state)
     {
@@ -211,36 +209,54 @@ fsm_event_t get_next_event(int current_state)
 
     case ST_ACTIVATED_ON:
     case ST_ACTIVATED_OFF:
-        timer_count++;
+        timer_counter++;
         /* Command to deactivate */
         if (!hazard_on && !left_on && !right_on)
         {
             event = EV_CMD_OFF;
         }
-        /* Acknowledgement */
-        else if (timer_count < TIMER_1S_COUNT_100MS)
-        {
-            if ((hazard_on && hazard_ack) || (left_on && left_ack) || (right_on && right_ack))
-            {
-                event = EV_ACK_RECEIVED;
-            }
-        }
-        else
+        /* No acknowledgement after 1 second */
+        else if (timer_counter >= TIMER_1S_COUNT_100MS)
         {
             event = EV_ACK_NOT_RECEIVED;
+        }
+        /* Wait acknowledgement */
+        else if (timer_counter < TIMER_1S_COUNT_100MS)
+        {
+            if ((hazard_on && hazard_ack))
+            {
+                event = EV_ACK_RECEIVED;
+                /* Clear acknowledge bit */
+                CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_HAZARD);
+                set_bit_flag_bgf_ack(bgf_ack);
+            }
+            else if (left_on && left_ack)
+            {
+                event = EV_ACK_RECEIVED;
+                /* Clear acknowledge bit */
+                CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_LEFT);
+                set_bit_flag_bgf_ack(bgf_ack);
+            }
+            else if (right_on && right_ack)
+            {
+                event = EV_ACK_RECEIVED;
+                /* Clear acknowledge bit */
+                CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_RIGHT);
+                set_bit_flag_bgf_ack(bgf_ack);
+            }
         }
         break;
 
     case ST_ACKNOWLEDGED_ON:
     case ST_ACKNOWLEDGED_OFF:
-        timer_count++;
+        timer_counter++;
         /* Command to deactivate */
         if (!hazard_on && !left_on && !right_on)
         {
             event = EV_CMD_OFF;
         }
         /* Timeout 1 second to toggle indicators */
-        else if (timer_count >= TIMER_1S_COUNT_100MS)
+        else if (timer_counter >= TIMER_1S_COUNT_100MS)
         {
             event = EV_TIMEOUT;
         }
@@ -251,37 +267,43 @@ fsm_event_t get_next_event(int current_state)
         break;
 
     default:
-        event = EV_NONE;
         break;
     }
 
     return event;
 }
 
-int fsm_indicators_run(int state)
+int fsm_indicators_run(void)
 {
+    int ret = -1;
     size_t i = 0;
     fsm_event_t event = EV_NONE;
 
     if (state != ST_TERM)
     {
+        /* Get event */
         event = get_next_event(state);
-
+        /* For each transitions */
         for (i = 0; i < TRANS_COUNT; i++)
         {
-            if ((state == trans[i].state) && (event == trans[i].event))
+            /* If State is current state OR The transition applies to all states ...*/
+            if ((state == trans[i].state) || (ST_ANY == trans[i].state))
             {
-                /* Apply the new state */
-                state = trans[i].next_state;
-                if (trans[i].callback != NULL)
+                /* If event is the transition event OR the event applies to all */
+                if ((event == trans[i].event) || (EV_ANY == trans[i].event))
                 {
-                    /* Call the state function */
-                    (void)(trans[i].callback)();
+                    /* Apply the new state */
+                    state = trans[i].next_state;
+                    if (trans[i].callback != NULL)
+                    {
+                        /* Call the state function */
+                        ret = (trans[i].callback)();
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
 
-    return state;
+    return ret;
 }

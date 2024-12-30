@@ -12,4 +12,6 @@
 #define OR |
 #define XOR ^
 
+#define CLEAR_BIT(x, bit) (x = x AND ~bit)
+
 #endif /* UTILS_H */
