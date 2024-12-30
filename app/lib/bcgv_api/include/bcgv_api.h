@@ -12,13 +12,12 @@
 #include <stdbool.h>
 
 // [Domain values]
-#define FRAME_NUMBER_MIN 1
-#define FRAME_NUMBER_MAX 100
+#define FRAME_NUMBER_MIN (1)
+#define FRAME_NUMBER_MAX (100)
 
-#define FUEL_LEVEL_MAX 40
+#define FUEL_LEVEL_MAX (40)
 
-#define ENGINE_RPM_MAX 10000
-
+#define ENGINE_RPM_MAX (10000)
 
 // Commands for windshield washer
 typedef bool cmd_t;
@@ -33,18 +32,20 @@ typedef uint32_t distance_t;
 typedef uint8_t speed_t;
 
 // Chassis issues
-typedef enum {
+typedef enum
+{
     CHASSIS_ISSUE_NONE = 0,
-    CHASSIS_ISSUE_TYRES = 1,
-    CHASSIS_ISSUE_BRAKES = 2,
+    CHASSIS_ISSUE_TYRES = (1 << 0),
+    CHASSIS_ISSUE_BRAKES = (1 << 1),
 } chassis_issues_t;
 
 // Motor issues
-typedef enum {
+typedef enum
+{
     MOTOR_ISSUE_NONE = 0,
-    MOTOR_ISSUE_TYRES = 1,
-    MOTOR_ISSUE_TEMPERATURE_LDR = 2,
-    MOTOR_ISSUE_OIL_OVERHEATING = 4,
+    MOTOR_ISSUE_TYRES = (1 << 0),
+    MOTOR_ISSUE_TEMPERATURE_LDR = (1 << 1),
+    MOTOR_ISSUE_OIL_OVERHEATING = (1 << 2),
 } motor_issues_t;
 
 // Issues, bit-carrying
@@ -57,31 +58,48 @@ typedef uint8_t fuel_level_t;
 typedef uint32_t engine_rpm_t;
 
 // Battery issues
-typedef enum {
-    BATTERY_ISSUES_NONE = 0x0,
-    BATTERY_ISSUES_DISCHARGED = 0x1,
-    BATTERY_ISSUES_KO = 0x2,
+typedef enum
+{
+    BATTERY_ISSUES_NONE = 0,
+    BATTERY_ISSUES_DISCHARGED = (1 << 0),
+    BATTERY_ISSUES_KO = (1 << 1),
 } battery_issues_t;
 
 // CRC8 - Calculated on the rest of the frame
 typedef uint8_t crc8_t;
 
 // [BCGV -> BGF] Message ID
-typedef enum {
-    BCGV_BGF_MSG_ID_1 = 0x01,
-    BCGV_BGF_MSG_ID_2 = 0x02,
-    BCGV_BGF_MSG_ID_3 = 0x03,
-    BCGV_BGF_MSG_ID_4 = 0x04,
-    BCGV_BGF_MSG_ID_5 = 0x05,
+typedef enum
+{
+    BCGV_BGF_MSG_ID_1 = 1,
+    BCGV_BGF_MSG_ID_2 = 2,
+    BCGV_BGF_MSG_ID_3 = 3,
+    BCGV_BGF_MSG_ID_4 = 4,
+    BCGV_BGF_MSG_ID_5 = 5,
 } bcgv_bgf_msg_id_t;
-
-// Bit-carrying flag 
-typedef uint8_t bit_flag_t;
 
 // [BCGV -> MUX] Alert flag
 typedef bool flag_t;
 
-void bcgv_init();
+// Bit-carrying flag
+typedef uint8_t bit_flag_t;
+
+// BGF message acknowledgement bits
+typedef enum
+{
+    BGF_ACK_POSITION_LIGHT = (1 << 0),
+    BGF_ACK_CROSSING_LIGHT = (1 << 1),
+    BGF_ACK_HIGHBEAM_LIGHT = (1 << 2),
+    BGF_ACK_INDIC_LEFT = (1 << 3),
+    BGF_ACK_INDIC_RIGHT = (1 << 4),
+    BGF_ACK_INDIC_HAZARD = (1 << 5),
+} bgf_ack_t;
+
+/**
+ * \brief Initialize context.
+ * \brief Initialize context variables for the api.
+ */
+void bcgv_ctx_init();
 
 /**
  * \brief Gets the cmd_position_light value.

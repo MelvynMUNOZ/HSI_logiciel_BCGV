@@ -1,13 +1,8 @@
 #==============================================================================
-
-#Define file name
-FILE_NAME := Makefile
-
-#==============================================================================
-# DIRECTORIES AND FILES
+# DIRECTORIES
 #==============================================================================
 
-### Predefined directories
+### Sub-Makefiles directories
 DIR_APP := app/
 DIR_LIB := app/lib/bcgv_api/
 
@@ -24,20 +19,29 @@ else
 endif
 
 #-------------------------------------------------
-# Makefile's clean rule
+# Makefile's clean rules
 #-------------------------------------------------
 .PHONY: clean
 clean:
-	@echo 'Clean generated files and static library'
+	@echo 'Clean application and static library'
 	$(Q)$(MAKE) -C $(DIR_APP) clean
 	$(Q)$(MAKE) -C $(DIR_LIB) clean
+
+.PHONY: cleanlib
+cleanlib:
+	@echo 'Clean static library'
+	$(Q)$(MAKE) -C $(DIR_LIB) clean
+
+.PHONY: cleanapp
+cleanapp:
+	@echo 'Clean application'
+	$(Q)$(MAKE) -C $(DIR_APP) clean
 
 #-------------------------------------------------
 # App Makefile
 #-------------------------------------------------
 .PHONY: app
 app:
-	@echo 'App Makefile'
 	$(Q)$(MAKE) -C $(DIR_APP)
 
 #-------------------------------------------------
@@ -45,7 +49,6 @@ app:
 #-------------------------------------------------
 .PHONY: lib
 lib:
-	@echo 'Static Lib Makefile'
 	$(Q)$(MAKE) -C $(DIR_LIB)
 
 #-------------------------------------------------
@@ -60,8 +63,6 @@ all: lib app
 #-------------------------------------------------
 .PHONY: info
 info:
-	@echo 'Files'
-	@echo '-- FILE_NAME: $(FILE_NAME)'
-	@echo 'SOURCES: $(SOURCES)'
-	@echo '-- APP_FILE: $(APP_FILE)'
-	@echo '-- LIB_FILE: $(LIB_FILE)'
+	@echo 'Directories'
+	@echo '-- APP: $(DIR_APP)'
+	@echo '-- LIB: $(DIR_LIB)'

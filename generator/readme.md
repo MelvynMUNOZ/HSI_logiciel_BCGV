@@ -26,7 +26,7 @@ To create and activate a virtual environment:
 #### On Windows:
 ```cmd
 # Create virtual environment
-python -m venv venv
+python -m venv .venv
 
 # Activate the environment
 venv\Scripts\activate
@@ -35,7 +35,7 @@ venv\Scripts\activate
 #### On macOS/Linux:
 ```bash
 # Create virtual environment
-python3 -m venv venv
+python3 -m venv .venv
 
 # Activate the environment
 source venv/bin/activate
