@@ -168,59 +168,40 @@ void fsm_windshield_washer_init(void)
     handle_all_off();
 }
 
-int fsm_windshield_washer_run(void)
+void fsm_windshield_washer_run(void)
 {
-    int i;
-    int ret = 0;
-    fsm_event_t event = EV_NONE;
-    fsm_state_t state = ST_ALL_OFF;
+    uint32_t i;
+    fsm_event_t event;
 
-    /* While FSM hasn't reached end state */
-    while (state != ST_TERM)
+    event = get_next_event(current_state);
+
+    if (event != EV_NONE)
     {
-        /* Get event */
-        event = get_next_event(state);
+        printf("DEBUG: FSM - State: %s, Event: %s\n",
+               fsm_get_state_name(current_state),
+               fsm_get_event_name(event));
+    }
 
-        if (event != EV_NONE)
+    for (i = 0; i < TRANS_COUNT; i++)
+    {
+        if ((current_state == trans[i].state) || (ST_ANY == trans[i].state))
         {
-            printf("DEBUG: FSM - State: %s, Event: %s\n",
-                   fsm_get_state_name(state),
-                   fsm_get_event_name(event));
-        }
-
-        /* For each transition */
-        for (i = 0; i < TRANS_COUNT; i++)
-        {
-            /* If State is current state OR The transition applies to all states */
-            if ((state == trans[i].state) || (ST_ANY == trans[i].state))
+            if ((event == trans[i].event) || (EV_ANY == trans[i].event))
             {
-                /* If event is the transition event OR the event applies to all */
-                if ((event == trans[i].event) || (EV_ANY == trans[i].event))
+                fsm_state_t next_state = trans[i].next_state;
+                if (event != EV_NONE)
                 {
-                    /* Record the transition for debugging */
-                    if (event != EV_NONE)
-                    {
-                        printf("INFO: FSM - Transition: %s -> %s\n",
-                               fsm_get_state_name(state),
-                               fsm_get_state_name(trans[i].next_state));
-                    }
-
-                    /* Apply the new state */
-                    state = trans[i].next_state;
-                    if (trans[i].callback != NULL)
-                    {
-                        /* Call the state function */
-                        ret = (trans[i].callback)();
-                        if (ret != 0)
-                        {
-                            return ret;
-                        }
-                    }
-                    break;
+                    printf("INFO: FSM - Transition: %s -> %s\n",
+                           fsm_get_state_name(current_state),
+                           fsm_get_state_name(next_state));
                 }
+                current_state = next_state;
+                if (trans[i].callback != NULL)
+                {
+                    trans[i].callback();
+                }
+                break;
             }
         }
     }
-
-    return ret;
 }

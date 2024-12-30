@@ -64,7 +64,7 @@ void fsm_windshield_washer_init(void);
  * \details Main FSM execution function
  * \return 0 on success, non-zero on error
  */
-int fsm_windshield_washer_run(void);
+void fsm_windshield_washer_run(void);
 
 /**
  * \brief Get current state name for debug prints
