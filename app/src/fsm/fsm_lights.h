@@ -6,12 +6,8 @@
  * \date 	2024-12-20
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-
-#ifndef FSM_LIGHTS_H_
-#define FSM_LIGHTS_H_
+#ifndef FSM_LIGHTS_H
+#define FSM_LIGHTS_H
 
 /**
  * \brief Run the verification state for lights and set up the next state
