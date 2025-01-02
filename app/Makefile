@@ -9,7 +9,8 @@ BUILD_MODE := release
 # Define source files to compile
 SOURCES := \
 	app.c \
-	fsm/fsm_indicators.c
+	fsm/fsm_indicators.c \
+	fsm/fsm_lights.c
 
 
 #==============================================================================
