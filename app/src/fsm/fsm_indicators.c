@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "bcgv_api.h"
 #include "fsm_indicators.h"
-#include "utils.h"
+#include "bit_utils.h"
 
 #define ON (true)
 #define OFF (false)
@@ -66,11 +66,11 @@ static int callback_cmd_on(void)
     {
         set_flag_indic_hazard(ON);
     }
-    else if (cmd_left == ON)
+    if (cmd_left == ON)
     {
         set_flag_indic_left(ON);
     }
-    else if (cmd_right == ON)
+    if (cmd_right == ON)
     {
         set_flag_indic_right(ON);
     }
@@ -88,11 +88,11 @@ static int callback_cmd_off(void)
     {
         set_flag_indic_hazard(OFF);
     }
-    else if (cmd_left == OFF)
+    if (cmd_left == OFF)
     {
         set_flag_indic_left(OFF);
     }
-    else if (cmd_right == OFF)
+    if (cmd_right == OFF)
     {
         set_flag_indic_right(OFF);
     }
@@ -185,9 +185,12 @@ transition_t trans[] = {
 fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
+    cmd_t cmd_hazard = get_cmd_indic_hazard();
     cmd_t cmd_left = get_cmd_indic_left();
     cmd_t cmd_right = get_cmd_indic_right();
-    cmd_t cmd_hazard = get_cmd_indic_hazard();
+    flag_t flag_hazard = get_flag_indic_hazard();
+    flag_t flag_left = get_flag_indic_left();
+    flag_t flag_right = get_flag_indic_right();
     bit_flag_t bgf_ack = get_bit_flag_bgf_ack();
 
     /* Common checks for all states */
@@ -210,8 +213,10 @@ fsm_event_t get_next_event(fsm_state_t current_state)
     case ST_ACTIVATED_ON:
     case ST_ACTIVATED_OFF:
         timer_counter++;
-        /* Command to deactivate */
-        if (!hazard_on && !left_on && !right_on)
+        /* Commands to deactivate */
+        if ((!hazard_on && (cmd_hazard != flag_hazard)) ||
+            (!left_on && (cmd_left != flag_left)) ||
+            (!right_on && (cmd_right != flag_right)))
         {
             event = EV_CMD_OFF;
         }
@@ -226,22 +231,22 @@ fsm_event_t get_next_event(fsm_state_t current_state)
             if ((hazard_on && hazard_ack))
             {
                 event = EV_ACK_RECEIVED;
-                /* Clear acknowledge bit */
                 CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_HAZARD);
-                set_bit_flag_bgf_ack(bgf_ack);
             }
-            else if (left_on && left_ack)
+            if (left_on && left_ack)
             {
                 event = EV_ACK_RECEIVED;
-                /* Clear acknowledge bit */
                 CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_LEFT);
-                set_bit_flag_bgf_ack(bgf_ack);
             }
-            else if (right_on && right_ack)
+            if (right_on && right_ack)
             {
                 event = EV_ACK_RECEIVED;
-                /* Clear acknowledge bit */
                 CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_RIGHT);
+            }
+
+            /* Clear acknowledgement bit */
+            if (event == EV_ACK_RECEIVED)
+            {
                 set_bit_flag_bgf_ack(bgf_ack);
             }
         }
@@ -250,8 +255,10 @@ fsm_event_t get_next_event(fsm_state_t current_state)
     case ST_ACKNOWLEDGED_ON:
     case ST_ACKNOWLEDGED_OFF:
         timer_counter++;
-        /* Command to deactivate */
-        if (!hazard_on && !left_on && !right_on)
+        /* Commands to deactivate */
+        if ((!hazard_on && (cmd_hazard != flag_hazard)) ||
+            (!left_on && (cmd_left != flag_left)) ||
+            (!right_on && (cmd_right != flag_right)))
         {
             event = EV_CMD_OFF;
         }
