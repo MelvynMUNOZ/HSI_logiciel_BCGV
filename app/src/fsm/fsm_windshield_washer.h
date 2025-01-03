@@ -12,6 +12,6 @@
  *
  * \return int Status of transition callback (-1 for error, 0 for success)
  */
-void fsm_windshield_washer_run(void);
+int fsm_windshield_washer_run(void);
 
 #endif /* FSM_WINDSHIELD_WASHER_H */
