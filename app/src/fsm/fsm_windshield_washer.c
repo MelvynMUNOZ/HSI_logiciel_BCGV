@@ -5,71 +5,84 @@
  * \author      Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
+#include <stdlib.h>
+#include "bcgv_api.h"
 #include "fsm_windshield_washer.h"
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include "bit_utils.h"
+
+#define TIMER_2S_COUNT_100MS (20) /* 2 seconds = 20 * 100ms */
+#define ON (true)
+#define OFF (false)
+
+/* States */
+typedef enum
+{
+    ST_ANY = -1,    /* Any state */
+    ST_INIT = 0,    /* Init state */
+    ST_ALL_OFF,     /* All systems off */
+    ST_WIPER_ON,    /* Only wipers on */
+    ST_BOTH_ON,     /* Both wipers and washer on */
+    ST_WIPER_TIMER, /* Wipers running on timer */
+    ST_TERM = 255   /* Final state */
+} fsm_state_t;
+
+/* Events */
+typedef enum
+{
+    EV_ANY = -1,       /* Any event */
+    EV_NONE = 0,       /* No event */
+    EV_CMD_WIPER_ON,   /* Command to activate wipers */
+    EV_CMD_WIPER_OFF,  /* Command to deactivate wipers */
+    EV_CMD_WASHER_ON,  /* Command to activate washer */
+    EV_CMD_WASHER_OFF, /* Command to deactivate washer */
+    EV_TIMEOUT,        /* 2-second timer expired */
+    EV_ERR = 255       /* Error event */
+} fsm_event_t;
 
 /* Static variables */
-static uint32_t timer_counter = 0;
-static const uint32_t TIMER_2SEC = 20; // 20 * 100ms = 2 seconds
+static fsm_state_t state = ST_INIT;
+static uint8_t timer_counter = 0;
 
-/* Debug string arrays for states and events */
-static const char *STATE_NAMES[] = {
-    [ST_ALL_OFF] = "ALL_OFF",
-    [ST_WIPER_ON] = "WIPER_ON",
-    [ST_WASHER_AND_WIPER_ON] = "WASHER_AND_WIPER_ON",
-    [ST_WIPER_TIMER] = "WIPER_TIMER"};
-
-static const char *EVENT_NAMES[] = {
-    [EV_NONE] = "NONE",
-    [EV_CMD_WIPER] = "CMD_WIPER",
-    [EV_CMD_WASHER] = "CMD_WASHER",
-    [EV_TIMER_2SEC] = "TIMER_2SEC"};
-
-/* Callback functions for state transitions */
-static int handle_all_off(void)
+/* Callback functions */
+static int callback_init(void)
 {
-    printf("DEBUG: FSM - Executing ALL_OFF actions\n");
-    set_cmd_wiper(WIPER_OFF);
-    set_cmd_washer(WASHER_OFF);
+    set_flag_wiper(OFF);
+    set_flag_washer(OFF);
     timer_counter = 0;
     return 0;
 }
 
-static int handle_wiper_on(void)
+static int callback_wiper_on(void)
 {
-    printf("DEBUG: FSM - Executing WIPER_ON actions\n");
-    set_cmd_wiper(WIPER_LOW);
-    set_cmd_washer(WASHER_OFF);
+    set_flag_wiper(ON);
+    return 0;
+}
+
+static int callback_all_off(void)
+{
+    set_flag_wiper(OFF);
+    set_flag_washer(OFF);
     timer_counter = 0;
     return 0;
 }
 
-static int handle_washer_and_wiper_on(void)
+static int callback_both_on(void)
 {
-    printf("DEBUG: FSM - Executing WASHER_AND_WIPER_ON actions\n");
-    set_cmd_wiper(WIPER_LOW);
-    set_cmd_washer(WASHER_ON);
-    timer_counter = 0;
+    set_flag_wiper(ON);
+    set_flag_washer(ON);
     return 0;
 }
 
-static int handle_wiper_timer(void)
+static int callback_timer_tick(void)
 {
-    printf("DEBUG: FSM - Executing WIPER_TIMER actions (counter: %lu)\n", (unsigned long)timer_counter);
-    set_cmd_wiper(WIPER_LOW);
-    set_cmd_washer(WASHER_OFF);
     timer_counter++;
     return 0;
 }
 
-static int handle_error(void)
+static int callback_error(void)
 {
-    printf("ERROR: FSM - Error condition triggered\n");
-    set_cmd_wiper(WIPER_OFF);
-    set_cmd_washer(WASHER_OFF);
-    timer_counter = 0;
+    set_flag_wiper(OFF);
+    set_flag_washer(OFF);
     return -1;
 }
 
@@ -80,128 +93,133 @@ typedef struct
     fsm_event_t event;
     int (*callback)(void);
     fsm_state_t next_state;
-} tTransition;
+} transition_t;
 
 /* Transition table */
-static tTransition trans[] = {
-    {ST_ALL_OFF, EV_CMD_WIPER, &handle_wiper_on, ST_WIPER_ON},
-    {ST_ALL_OFF, EV_CMD_WASHER, &handle_washer_and_wiper_on, ST_WASHER_AND_WIPER_ON},
-    {ST_WIPER_ON, EV_CMD_WIPER, &handle_all_off, ST_ALL_OFF},
-    {ST_WIPER_ON, EV_CMD_WASHER, &handle_washer_and_wiper_on, ST_WASHER_AND_WIPER_ON},
-    {ST_WASHER_AND_WIPER_ON, EV_CMD_WASHER, &handle_wiper_timer, ST_WIPER_TIMER},
-    {ST_WIPER_TIMER, EV_TIMER_2SEC, &handle_all_off, ST_ALL_OFF},
-    {ST_WIPER_TIMER, EV_CMD_WIPER, &handle_wiper_on, ST_WIPER_ON},
-    {ST_WIPER_TIMER, EV_CMD_WASHER, &handle_washer_and_wiper_on, ST_WASHER_AND_WIPER_ON},
-    {ST_ANY, EV_ERR, &handle_error, ST_ALL_OFF}};
+static transition_t trans[] = {
+    /* Initial transition */
+    {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
+
+    /* Transitions from ALL_OFF */
+    {ST_ALL_OFF, EV_CMD_WIPER_ON, &callback_wiper_on, ST_WIPER_ON},
+    {ST_ALL_OFF, EV_CMD_WASHER_ON, &callback_both_on, ST_BOTH_ON},
+
+    /* Transitions from WIPER_ON */
+    {ST_WIPER_ON, EV_CMD_WIPER_OFF, &callback_all_off, ST_ALL_OFF},
+    {ST_WIPER_ON, EV_CMD_WASHER_ON, &callback_both_on, ST_BOTH_ON},
+
+    /* Transitions from BOTH_ON */
+    {ST_BOTH_ON, EV_CMD_WASHER_OFF, &callback_wiper_on, ST_WIPER_TIMER},
+
+    /* Transitions from WIPER_TIMER */
+    {ST_WIPER_TIMER, EV_CMD_WASHER_ON, &callback_both_on, ST_BOTH_ON},
+    {ST_WIPER_TIMER, EV_TIMEOUT, &callback_all_off, ST_ALL_OFF},
+    {ST_WIPER_TIMER, EV_NONE, &callback_timer_tick, ST_WIPER_TIMER},
+
+    /* Error handling */
+    {ST_ANY, EV_ERR, &callback_error, ST_TERM}};
 
 #define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
 
-/* Static variables for FSM state */
-static fsm_state_t current_state = ST_ALL_OFF;
-static cmd_wiper_t last_wiper_cmd = WIPER_OFF;
-static cmd_washer_t last_washer_cmd = WASHER_OFF;
-
-const char *fsm_get_state_name(fsm_state_t state)
-{
-    if (state == ST_ANY)
-        return "ANY";
-    if (state == ST_TERM)
-        return "TERM";
-    if (state >= 0 && state <= ST_WIPER_TIMER)
-        return STATE_NAMES[state];
-    return "UNKNOWN";
-}
-
-const char *fsm_get_event_name(fsm_event_t event)
-{
-    if (event == EV_ANY)
-        return "ANY";
-    if (event == EV_ERR)
-        return "ERROR";
-    if (event >= 0 && event <= EV_TIMER_2SEC)
-        return EVENT_NAMES[event];
-    return "UNKNOWN";
-}
-
+/**
+ * \brief Get the next event for the FSM
+ *
+ * \param current_state Current state of the FSM
+ * \return fsm_event_t Next event to process
+ */
 static fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
 
-    cmd_wiper_t current_wiper_cmd = get_cmd_wiper();
-    cmd_washer_t current_washer_cmd = get_cmd_washer();
+    /* Get current commands */
+    cmd_t cmd_wiper = get_cmd_wiper();
+    cmd_t cmd_washer = get_cmd_washer();
 
-    if (current_wiper_cmd != last_wiper_cmd)
+    switch (current_state)
     {
-        printf("DEBUG: FSM - Wiper command changed: %d -> %d\n", last_wiper_cmd, current_wiper_cmd);
-        last_wiper_cmd = current_wiper_cmd;
-        if (current_wiper_cmd != WIPER_OFF)
+    case ST_ALL_OFF:
+        if (cmd_wiper == ON)
         {
-            event = EV_CMD_WIPER;
+            event = EV_CMD_WIPER_ON;
         }
-    }
-    else if (current_washer_cmd != last_washer_cmd)
-    {
-        printf("DEBUG: FSM - Washer command changed: %d -> %d\n", last_washer_cmd, current_washer_cmd);
-        last_washer_cmd = current_washer_cmd;
-        if (current_washer_cmd != WASHER_OFF)
+        else if (cmd_washer == ON)
         {
-            event = EV_CMD_WASHER;
+            event = EV_CMD_WASHER_ON;
         }
-    }
+        break;
 
-    if (current_state == ST_WIPER_TIMER && timer_counter >= TIMER_2SEC)
-    {
-        printf("DEBUG: FSM - 2-second timer expired\n");
-        event = EV_TIMER_2SEC;
+    case ST_WIPER_ON:
+        if (cmd_wiper == OFF)
+        {
+            event = EV_CMD_WIPER_OFF;
+        }
+        else if (cmd_washer == ON)
+        {
+            event = EV_CMD_WASHER_ON;
+        }
+        break;
+
+    case ST_BOTH_ON:
+        if (cmd_washer == OFF)
+        {
+            event = EV_CMD_WASHER_OFF;
+        }
+        break;
+
+    case ST_WIPER_TIMER:
+        if (cmd_washer == ON)
+        {
+            event = EV_CMD_WASHER_ON;
+        }
+        else if (timer_counter >= TIMER_2S_COUNT_100MS)
+        {
+            event = EV_TIMEOUT;
+        }
+        break;
+
+    case ST_TERM:
+        event = EV_ERR;
+        break;
+
+    default:
+        break;
     }
 
     return event;
 }
 
-void fsm_windshield_washer_init(void)
+int fsm_windshield_washer_run(void)
 {
-    printf("INFO: FSM - Initializing windshield washer FSM\n");
-    current_state = ST_ALL_OFF;
-    last_wiper_cmd = WIPER_OFF;
-    last_washer_cmd = WASHER_OFF;
-    timer_counter = 0;
-    handle_all_off();
-}
+    int ret = 0;
+    size_t i = 0;
+    fsm_event_t event = EV_NONE;
 
-void fsm_windshield_washer_run(void)
-{
-    uint32_t i;
-    fsm_event_t event;
-
-    event = get_next_event(current_state);
-
-    if (event != EV_NONE)
+    if (state != ST_TERM)
     {
-        printf("DEBUG: FSM - State: %s, Event: %s\n",
-               fsm_get_state_name(current_state),
-               fsm_get_event_name(event));
-    }
+        /* Get event */
+        event = get_next_event(state);
 
-    for (i = 0; i < TRANS_COUNT; i++)
-    {
-        if ((current_state == trans[i].state) || (ST_ANY == trans[i].state))
+        /* For each transition */
+        for (i = 0; i < TRANS_COUNT; i++)
         {
-            if ((event == trans[i].event) || (EV_ANY == trans[i].event))
+            /* If State is current state OR The transition applies to all states */
+            if ((state == trans[i].state) || (ST_ANY == trans[i].state))
             {
-                fsm_state_t next_state = trans[i].next_state;
-                if (event != EV_NONE)
+                /* If event is the transition event OR the event applies to all */
+                if ((event == trans[i].event) || (EV_ANY == trans[i].event))
                 {
-                    printf("INFO: FSM - Transition: %s -> %s\n",
-                           fsm_get_state_name(current_state),
-                           fsm_get_state_name(next_state));
+                    /* Apply the new state */
+                    state = trans[i].next_state;
+                    if (trans[i].callback != NULL)
+                    {
+                        /* Call the state function */
+                        ret = (trans[i].callback)();
+                    }
+                    break;
                 }
-                current_state = next_state;
-                if (trans[i].callback != NULL)
-                {
-                    trans[i].callback();
-                }
-                break;
             }
         }
     }
+
+    return ret;
 }
