@@ -5,8 +5,12 @@
  * \brief       This is a template file to create a Finite State Machine.
  */
 
+#include <stdlib.h>
 #include "bcgv_api.h"
 #include "fsm_lights.h"
+#include "bit_utils.h"
+
+#define TIMER_1S_COUNT_100MS (10)
 
 /* States */
 typedef enum
@@ -24,21 +28,17 @@ typedef enum
 {
     EV_ANY = -1, /* Any event */
     EV_NONE = 0, /* No event */
-    EV_POSITION_ON = 1,
-    EV_POSITION_OFF = 2,
-    EV_POSITION_ON_ACK = 3,
-    EV_CROSSING_ON = 4,
-    EV_CROSSING_OFF = 5,
-    EV_CROSSING_ON_ACK = 6,
-    EV_HIGHBEAM_ON = 7,
-    EV_HIGHBEAM_OFF = 8,
-    EV_HIGHBEAM_ON_ACK = 9,
+    EV_CMD_ON = 1,
+    EV_CMD_OFF = 2,
+    EV_CMD_ON_ACK = 3,
     EV_ERR = 255 /* Error event */
 } fsm_event_t;
 
-/* Callback functions called on transitions */
+/* Static variable */
+static fsm_state_t state = ST_INIT;
+static uint8_t timer_counter = 0;
 
-// ALL LIGHTS
+/* Callback functions called on transitions */
 
 /**
  * \brief    Initialise all light flags to false
@@ -48,6 +48,7 @@ static int callback_init(void)
     set_flag_position_light(false);
     set_flag_crossing_light(false);
     set_flag_highbeam_light(false);
+    return 0;
 }
 /**
  * \brief   Change position light to true, crossing light to true, highbeam light to true,
@@ -57,72 +58,75 @@ static int FsmError(void)
     set_flag_position_light(false);
     set_flag_crossing_light(false);
     set_flag_highbeam_light(false);
+    return -1;
 }
-
-// POSITION LIGHT
 
 /**
- * \brief   Change position light to true
+ * \brief   Change one type of light to true
  */
-static int callback_position_ON(void)
+static int callback_cmd_ON(void)
 {
-    set_flag_position_light(true);
-}
-/**
- * \brief   Change position light to false
- */
-static int callback_position_OFF(void)
-{
-    set_flag_position_light(false);
-}
+    cmd_t cmd_position_light = get_cmd_position_light();
+    cmd_t cmd_crossing_light = get_cmd_crossing_light();
+    cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
 
-static int callback_position_ON_ACK(void)
-{
-    // TODO
+    if (cmd_crossing_light == true)
+    {
+        set_flag_position_light(true);
+    }
+    if (cmd_crossing_light == true)
+    {
+        set_flag_crossing_light(true);
+    }
+    if (cmd_highbeam_light == true)
+    {
+        set_flag_highbeam_light(true);
+    }
+    return 0;
 }
-
-// CROSSING LIGHT
-
-/**
- * \brief   Change crossing light to true
- */
-static int callback_crossing_ON(void)
-{
-    set_flag_crossing_light(true);
-}
-/**
- * \brief   Change crossing light to false
- */
-static int callback_crossing_OFF(void)
-{
-    set_flag_crossing_light(false);
-}
-
-static int callback_crossing_ON_ACK(void)
-{
-    // TODO
-}
-
-// HIGHBEAM LIGHT
 
 /**
- * \brief   Change highbeam light to true
+ * \brief   Change one type of light to false
  */
-static int callback_highbeam_ON(void)
+static int callback_cmd_OFF(void)
 {
-    set_flag_highbeam_light(true);
-}
-/**
- * \brief   Change highbeam light to false
- */
-static int callback_highbeam_OFF(void)
-{
-    set_flag_highbeam_light(false);
+    cmd_t cmd_position_light = get_cmd_position_light();
+    cmd_t cmd_crossing_light = get_cmd_crossing_light();
+    cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
+
+    if (cmd_crossing_light == false)
+    {
+        set_flag_position_light(false);
+    }
+    if (cmd_crossing_light == false)
+    {
+        set_flag_crossing_light(false);
+    }
+    if (cmd_highbeam_light == false)
+    {
+        set_flag_highbeam_light(false);
+    }
+
+    timer_counter = 0;
+
+    return 0;
 }
 
-static int callback_highbeam_ON_ACK(void)
+/**
+ * \brief   Callback ON ack
+ */
+static int callback_cmd_ON_ACK(void)
 {
-    // TODO
+    return 0;
+}
+
+/**
+ * \brief   Callback for waiting ON ack
+ */
+static int callback_cmd_ON_wait_ACK(void)
+{
+    timer_counter++;
+    return 0;
 }
 
 /* Transition structure */
@@ -131,27 +135,18 @@ typedef struct
     fsm_state_t state;
     fsm_event_t event;
     int (*callback)(void);
-    int next_state;
+    fsm_state_t next_state;
 } tTransition;
 
 /* Transition table */
 tTransition trans[] = {
     {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
 
-    {ST_ALL_OFF, EV_POSITION_ON, &callback_position_ON, ST_ONE_ON},
-    {ST_ONE_ON, EV_POSITION_ON_ACK, &callback_position_ON_ACK, ST_ONE_ON_ACK},
-    {ST_ONE_ON, EV_POSITION_OFF, &callback_init, ST_ALL_OFF},
-    {ST_ONE_ON_ACK, EV_POSITION_OFF, &callback_init, ST_ALL_OFF},
-
-    {ST_ALL_OFF, EV_CROSSING_ON, &callback_crossing_ON, ST_ONE_ON},
-    {ST_ONE_ON, EV_CROSSING_ON_ACK, &callback_crossing_ON_ACK, ST_ONE_ON_ACK},
-    {ST_ONE_ON, EV_CROSSING_OFF, &callback_init, ST_ALL_OFF},
-    {ST_ONE_ON_ACK, EV_CROSSING_OFF, &callback_init, ST_ALL_OFF},
-
-    {ST_ALL_OFF, EV_HIGHBEAM_ON, &callback_highbeam_ON, ST_ONE_ON},
-    {ST_ONE_ON, EV_HIGHBEAM_ON_ACK, &callback_highbeam_ON_ACK, ST_ONE_ON_ACK},
-    {ST_ONE_ON, EV_HIGHBEAM_OFF, &callback_init, ST_ALL_OFF},
-    {ST_ONE_ON_ACK, EV_HIGHBEAM_OFF, &callback_init, ST_ALL_OFF},
+    {ST_ALL_OFF, EV_CMD_ON, &callback_cmd_ON, ST_ONE_ON},
+    {ST_ONE_ON, EV_CMD_OFF, &callback_cmd_OFF, ST_ALL_OFF},
+    {ST_ONE_ON, EV_NONE, &callback_cmd_ON_wait_ACK, ST_ONE_ON},
+    {ST_ONE_ON, EV_CMD_ON_ACK, &callback_cmd_ON_ACK, ST_ONE_ON_ACK},
+    {ST_ONE_ON_ACK, EV_CMD_OFF, &callback_init, ST_ALL_OFF},
 
     {ST_ONE_ON, EV_ERR, &FsmError, ST_TERM},
     {ST_ANY, EV_ERR, &FsmError, ST_TERM}
@@ -161,122 +156,88 @@ tTransition trans[] = {
 #define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
 
 /**
- * \brief Verified is all command light are OFF
- *
- * \param cmd_position_light
- * \param cmd_crossing_light
- * \param cmd_highbeam_light
- * \return boolean
- */
-bool is_all_light_OFF(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_highbeam_light)
-{
-    return cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_highbeam_light == 0;
-}
-/**
- * \brief Verified is only position light is ON
- *
- * \param cmd_position_light
- * \param cmd_crossing_light
- * \param cmd_highbeam_light
- * \return boolean
- */
-bool is_position_light_ON(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_highbeam_light)
-{
-    return cmd_position_light == 1 && cmd_crossing_light == 0 && cmd_highbeam_light == 0;
-}
-/**
- * \brief Verified is only crossing light is ON
- *
- * \param cmd_position_light
- * \param cmd_crossing_light
- * \param cmd_highbeam_light
- * \return boolean
- */
-bool is_crossing_light_ON(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_highbeam_light)
-{
-    return cmd_position_light == 0 && cmd_crossing_light == 1 && cmd_highbeam_light == 0;
-}
-/**
- * \brief Verified is only crossing light is ON
- *
- * \param cmd_position_light
- * \param cmd_crossing_light
- * \param cmd_highbeam_light
- * \return boolean
- */
-bool is_highbeam_light_ON(cmd_light_t cmd_position_light, cmd_light_t cmd_crossing_light, cmd_light_t cmd_highbeam_light)
-{
-    return cmd_position_light == 0 && cmd_crossing_light == 0 && cmd_highbeam_light == 1;
-}
-
-/**
  * \brief Get the next event object
  *
  * \param current_state
- * \return int
+ * \return fsm_event_t
  */
-int get_next_event(int current_state)
+fsm_event_t get_next_event(fsm_state_t current_state)
 {
-    int event = EV_NONE;
+    fsm_event_t event = EV_NONE;
 
     /* Here, you can get the parameters of your FSM */
-    cmd_light_t cmd_position_light = get_cmd_position_light();
-    cmd_light_t cmd_crossing_light = get_cmd_crossing_light();
-    cmd_light_t cmd_highbeam_light = get_cmd_highbeam_light();
+    cmd_t cmd_position_light = get_cmd_position_light();
+    cmd_t cmd_crossing_light = get_cmd_crossing_light();
+    cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
 
     flag_t flag_position_light = get_flag_position_light();
     flag_t flag_crossing_light = get_flag_crossing_light();
     flag_t flag_highbeam_light = get_flag_highbeam_light();
+
+    bit_flag_t bgf_ack = get_bit_flag_bgf_ack();
+
+    bool position_ON = (cmd_crossing_light == true);
+    bool crossing_ON = (cmd_crossing_light == true);
+    bool highbeam_ON = (cmd_crossing_light == true);
+
+    bool flag_position_ON = (flag_crossing_light == true);
+    bool flag_crossing_ON = (flag_crossing_light == true);
+    bool flag_highbeam_ON = (flag_crossing_light == true);
+
+    bool position_ON_ack = (bgf_ack AND BGF_ACK_POSITION_LIGHT);
+    bool crossing_ON_ack = (bgf_ack AND BGF_ACK_CROSSING_LIGHT);
+    bool highbeam_ON_ack = (bgf_ack AND BGF_ACK_HIGHBEAM_LIGHT);
 
     /* Build all the events */
 
     switch (current_state)
     {
     case ST_ALL_OFF:
-        if (is_all_light_OFF(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
+        if (position_ON || crossing_ON || highbeam_ON)
         {
-            event = EV_NONE;
-        }
-        else if (is_position_light_ON(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
-        {
-            event = EV_POSITION_ON;
-        }
-        else if (is_crossing_light_ON(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
-        {
-            event = EV_CROSSING_ON;
-        }
-        else if (is_highbeam_light_ON(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
-        {
-            event = EV_HIGHBEAM_ON;
+            event = EV_CMD_ON;
         }
         break;
     case ST_ONE_ON:
-        if (is_all_light_OFF(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
+        if (!position_ON && !crossing_ON && !highbeam_ON)
         {
-            if (flag_position_light == true)
+            if (flag_position_ON || flag_crossing_ON || flag_highbeam_ON)
             {
-                event = EV_POSITION_OFF;
-            }
-            else if (flag_crossing_light == true)
-            {
-                event = EV_CROSSING_OFF;
-            }
-            else if (flag_highbeam_light == true)
-            {
-                event = EV_HIGHBEAM_OFF;
+                event = EV_CMD_OFF;
             }
         }
-        else if (flag_position_light == true && is_position_light_ON(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
+        else if (timer_counter < TIMER_1S_COUNT_100MS)
         {
-            event = EV_POSITION_ON;
-        }
-        else if (flag_crossing_light == true && is_crossing_light_ON(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
-        {
-            event = EV_CROSSING_ON;
-        }
-        else if (flag_highbeam_light == true && is_highbeam_light_ON(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
-        {
-            event = EV_HIGHBEAM_ON;
+            if (position_ON && flag_position_ON)
+            {
+                if (position_ON_ack)
+                {
+                    event = EV_CMD_ON_ACK;
+                    /* Clear acknowledge bit */
+                    CLEAR_BIT(bgf_ack, BGF_ACK_POSITION_LIGHT);
+                    set_bit_flag_bgf_ack(bgf_ack);
+                }
+            }
+            else if (crossing_ON && flag_crossing_ON)
+            {
+                if (crossing_ON_ack)
+                {
+                    event = EV_CMD_ON_ACK;
+                    /* Clear acknowledge bit */
+                    CLEAR_BIT(bgf_ack, BGF_ACK_CROSSING_LIGHT);
+                    set_bit_flag_bgf_ack(bgf_ack);
+                }
+            }
+            else if (highbeam_ON && flag_highbeam_ON)
+            {
+                if (highbeam_ON_ack)
+                {
+                    event = EV_CMD_ON_ACK;
+                    /* Clear acknowledge bit */
+                    CLEAR_BIT(bgf_ack, BGF_ACK_HIGHBEAM_LIGHT);
+                    set_bit_flag_bgf_ack(bgf_ack);
+                }
+            }
         }
         else
         {
@@ -284,20 +245,9 @@ int get_next_event(int current_state)
         }
         break;
     case ST_ONE_ON_ACK:
-        if (is_all_light_OFF(cmd_position_light, cmd_crossing_light, cmd_highbeam_light))
+        if (!position_ON && !crossing_ON && !highbeam_ON)
         {
-            if (flag_position_light == true)
-            {
-                event = EV_POSITION_OFF;
-            }
-            else if (flag_crossing_light == true)
-            {
-                event = EV_CROSSING_OFF;
-            }
-            else if (flag_highbeam_light == true)
-            {
-                event = EV_HIGHBEAM_OFF;
-            }
+            event = EV_CMD_OFF;
         }
         break;
     case ST_TERM:
@@ -309,13 +259,11 @@ int get_next_event(int current_state)
 
 int fsm_lights_run(void)
 {
-    int i = 0;
+    size_t i = 0;
     int ret = 0;
-    int event = EV_NONE;
-    int state = ST_INIT;
+    fsm_event_t event = EV_NONE;
 
-    /* While FSM hasn't reach end state */
-    while (state != ST_TERM)
+    if (state != ST_TERM)
     {
         /* Get event */
         event = get_next_event(state);
@@ -340,6 +288,5 @@ int fsm_lights_run(void)
             }
         }
     }
-
     return ret;
 }
