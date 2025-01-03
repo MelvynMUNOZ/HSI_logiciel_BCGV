@@ -26,12 +26,14 @@ typedef struct {
     engine_rpm_t engine_rpm; // Engine Revolution/minute
     issues_t battery_issues; // Battery issues, bit-carrying
     crc8_t crc8; // CRC8
-    flag_t flag_position_light; // Position light flag
-    flag_t flag_crossing_light; // Crossing light flag
-    flag_t flag_highbeam_light; // High beam light flag
-    flag_t flag_indic_left; // Left turn indicator flag
-    flag_t flag_indic_right; // Right turn Indicator flag
-    flag_t flag_indic_hazard; // Hazard (warnings) lights flag
+    flag_t flag_position_light; // Position light activation flag
+    flag_t flag_crossing_light; // Crossing light activation flag
+    flag_t flag_highbeam_light; // High beam light activation flag
+    flag_t flag_indic_hazard; // Hazard (warnings) lights activation flag
+    flag_t flag_indic_left; // Left turn indicator activation flag
+    flag_t flag_indic_right; // Right turn Indicator activation flag
+    flag_t flag_wiper; // Windshield wipers activation flag
+    flag_t flag_washer; // Windshield washer activation flag
     bit_flag_t bit_flag_bgf_ack; // BGF acknowledgement flags, bit-carrying
 } context_t;
 
@@ -59,9 +61,11 @@ void bcgv_ctx_init() {
     context.flag_position_light = 0;
     context.flag_crossing_light = 0;
     context.flag_highbeam_light = 0;
+    context.flag_indic_hazard = 0;
     context.flag_indic_left = 0;
     context.flag_indic_right = 0;
-    context.flag_indic_hazard = 0;
+    context.flag_wiper = 0;
+    context.flag_washer = 0;
     context.bit_flag_bgf_ack = 0;
 }
 
@@ -232,6 +236,14 @@ void set_flag_highbeam_light(flag_t value) {
     context.flag_highbeam_light = value;
 }
 
+flag_t get_flag_indic_hazard() {
+    return context.flag_indic_hazard;
+}
+
+void set_flag_indic_hazard(flag_t value) {
+    context.flag_indic_hazard = value;
+}
+
 flag_t get_flag_indic_left() {
     return context.flag_indic_left;
 }
@@ -248,12 +260,20 @@ void set_flag_indic_right(flag_t value) {
     context.flag_indic_right = value;
 }
 
-flag_t get_flag_indic_hazard() {
-    return context.flag_indic_hazard;
+flag_t get_flag_wiper() {
+    return context.flag_wiper;
 }
 
-void set_flag_indic_hazard(flag_t value) {
-    context.flag_indic_hazard = value;
+void set_flag_wiper(flag_t value) {
+    context.flag_wiper = value;
+}
+
+flag_t get_flag_washer() {
+    return context.flag_washer;
+}
+
+void set_flag_washer(flag_t value) {
+    context.flag_washer = value;
 }
 
 bit_flag_t get_bit_flag_bgf_ack() {

@@ -78,7 +78,7 @@ typedef enum
     BCGV_BGF_MSG_ID_5 = 5,
 } bcgv_bgf_msg_id_t;
 
-// [BCGV -> MUX] Alert flag
+// [BCGV -> MUX] Flag
 typedef bool flag_t;
 
 // Bit-carrying flag
@@ -382,6 +382,20 @@ flag_t get_flag_highbeam_light();
 void set_flag_highbeam_light(flag_t value);
 
 /**
+ * \brief Gets the flag_indic_hazard value.
+ * \details Returns the current state of the flag_indic_hazard.
+ * \return flag_t : The flag_indic_hazard value.
+ */
+flag_t get_flag_indic_hazard();
+
+/**
+ * \brief Sets the flag_indic_hazard value.
+ * \details Sets the flag_indic_hazard to the given value.
+ * \param value : The new value for the flag_indic_hazard.
+ */
+void set_flag_indic_hazard(flag_t value);
+
+/**
  * \brief Gets the flag_indic_left value.
  * \details Returns the current state of the flag_indic_left.
  * \return flag_t : The flag_indic_left value.
@@ -410,18 +424,32 @@ flag_t get_flag_indic_right();
 void set_flag_indic_right(flag_t value);
 
 /**
- * \brief Gets the flag_indic_hazard value.
- * \details Returns the current state of the flag_indic_hazard.
- * \return flag_t : The flag_indic_hazard value.
+ * \brief Gets the flag_wiper value.
+ * \details Returns the current state of the flag_wiper.
+ * \return flag_t : The flag_wiper value.
  */
-flag_t get_flag_indic_hazard();
+flag_t get_flag_wiper();
 
 /**
- * \brief Sets the flag_indic_hazard value.
- * \details Sets the flag_indic_hazard to the given value.
- * \param value : The new value for the flag_indic_hazard.
+ * \brief Sets the flag_wiper value.
+ * \details Sets the flag_wiper to the given value.
+ * \param value : The new value for the flag_wiper.
  */
-void set_flag_indic_hazard(flag_t value);
+void set_flag_wiper(flag_t value);
+
+/**
+ * \brief Gets the flag_washer value.
+ * \details Returns the current state of the flag_washer.
+ * \return flag_t : The flag_washer value.
+ */
+flag_t get_flag_washer();
+
+/**
+ * \brief Sets the flag_washer value.
+ * \details Sets the flag_washer to the given value.
+ * \param value : The new value for the flag_washer.
+ */
+void set_flag_washer(flag_t value);
 
 /**
  * \brief Gets the bit_flag_bgf_ack value.
