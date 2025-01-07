@@ -7,6 +7,7 @@
 
 #include "drv_api.h"
 #include "bcgv_api.h"
+#include "mux.h"
 
 int main(void)
 {
@@ -43,14 +44,15 @@ int main(void)
         }
 
         /* TMP: print each byte for now */
-        printf("MUX > [");
+        printf("\nMUX > [ ");
         for (size_t i = 0; i < DRV_UDP_100MS_FRAME_SIZE; i++)
         {
             printf("%02X ", udp_frame[i]);
         }
         printf("]\n");
+        /* END TMP */
 
-        /* TODO: real implementation */
+        mux_decode(udp_frame);
     }
 
     /***** Closing application *****/
