@@ -139,7 +139,7 @@ typedef struct
 } tTransition;
 
 /* Transition table */
-tTransition trans[] = {
+static const tTransition trans[] = {
     {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
 
     {ST_ALL_OFF, EV_CMD_ON, &callback_cmd_ON, ST_ONE_ON},
@@ -157,11 +157,10 @@ tTransition trans[] = {
 
 /**
  * \brief Get the next event object
- *
- * \param current_state
- * \return fsm_event_t
+ * \param current_state :
+ * \return fsm_event_t :
  */
-fsm_event_t get_next_event(fsm_state_t current_state)
+static fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
 

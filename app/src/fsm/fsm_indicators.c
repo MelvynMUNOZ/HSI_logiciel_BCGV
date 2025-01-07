@@ -158,7 +158,7 @@ typedef struct
 } transition_t;
 
 /* Transition table */
-transition_t trans[] = {
+static const transition_t trans[] = {
     {ST_INIT, EV_NONE, &callback_init, ST_OFF},
     {ST_OFF, EV_CMD_ON, &callback_cmd_on, ST_ACTIVATED_ON},
     {ST_ACTIVATED_ON, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
@@ -182,7 +182,7 @@ transition_t trans[] = {
  * \param current_state : Current FSM state.
  * \return fsm_event_t : Next event value.
  */
-fsm_event_t get_next_event(fsm_state_t current_state)
+static fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
     cmd_t cmd_hazard = get_cmd_indic_hazard();
