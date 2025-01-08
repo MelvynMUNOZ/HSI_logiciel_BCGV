@@ -47,7 +47,7 @@ static const uint8_t crc8_lookup_table[256] = {
     0x82, 0xB3, 0xE0, 0xD1, 0x46, 0x77, 0x24, 0x15,
     0x3B, 0x0A, 0x59, 0x68, 0xFF, 0xCE, 0x9D, 0xAC};
 
-uint8_t compute_crc8(const uint8_t *data, size_t length)
+uint8_t crc8_compute(const uint8_t *data, size_t length)
 {
     uint8_t crc = CRC8_INIT;
     uint8_t index;
@@ -64,7 +64,7 @@ uint8_t compute_crc8(const uint8_t *data, size_t length)
     return crc;
 }
 
-uint8_t update_crc8(uint8_t current_crc, uint8_t new_byte)
+uint8_t crc8_update(uint8_t current_crc, uint8_t new_byte)
 {
     uint8_t index = new_byte XOR current_crc;
     return crc8_lookup_table[index];

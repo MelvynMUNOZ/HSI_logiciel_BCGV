@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include "log.h"
 
-void log_write(const char *level, const char *file, int line, const char *fmt, ...)
+void log_write(const char *level, const char *func, int line, const char *fmt, ...)
 {
     /* Get the current time */
     time_t now = time(NULL);
@@ -18,7 +18,7 @@ void log_write(const char *level, const char *file, int line, const char *fmt, .
     strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", local_time);
 
     /* Write the log message */
-    fprintf(stdout, "[%s] [%s] %s:%d: ", time_buf, level, file, line);
+    fprintf(stdout, "[%s] [%s] %s:%d: ", time_buf, level, func, line);
 
     va_list args;
     va_start(args, fmt);

@@ -18,7 +18,7 @@
  * \param length : Number of bytes in the data buffer.
  * \return uint8_t : The computed CRC-8 checksum.
  */
-uint8_t compute_crc8(const uint8_t *data, size_t length);
+uint8_t crc8_compute(const uint8_t *data, size_t length);
 
 /**
  * \brief Update an existing CRC-8 checksum with a new byte.
@@ -26,6 +26,6 @@ uint8_t compute_crc8(const uint8_t *data, size_t length);
  * \param new_byte : New byte to include in the checksum.
  * \return uint8_t : Updated CRC-8 checksum.
  */
-uint8_t update_crc8(uint8_t current_crc, uint8_t new_byte);
+uint8_t crc8_update(uint8_t current_crc, uint8_t new_byte);
 
 #endif /* CRC8_H */
