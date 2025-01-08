@@ -9,6 +9,7 @@ BUILD_MODE := release
 # Define source files to compile
 SOURCES := bcgv_api.c
 
+
 #==============================================================================
 # DIRECTORIES AND FILES
 #==============================================================================
@@ -26,6 +27,7 @@ SOURCE_FILES := $(strip $(filter-out \, $(addprefix $(DIR_SRC), $(SOURCES))))
 
 ### Object file 
 OBJECT_FILES := $(strip $(subst $(DIR_SRC), $(DIR_BUILD), $(addsuffix .o, $(basename $(SOURCE_FILES)))))
+
 
 #==============================================================================
 # COMPILER AND LINKER
@@ -53,13 +55,16 @@ AR := ar
 ### Library compiler function
 RCS := rcs
 
+
 #==============================================================================
 # SHELL
 #==============================================================================
 
 ### Commands
 MKDIR := mkdir -p
-RM    := rm -rf
+RM    := rm -f
+RMDIR := rm -rf
+
 
 #==============================================================================
 # RULES
@@ -80,12 +85,8 @@ endif
 #-------------------------------------------------
 .PHONY: __checkdirs
 __checkdirs:
-	@if [ ! -d "$(DIR_BUILD)" ]; then \
-		$(MKDIR) $(DIR_BUILD); \
-	fi
-	@if [ ! -d "$(DIR_LIB)" ]; then \
-		$(MKDIR) $(DIR_LIB); \
-	fi
+	$(if $(wildcard $(DIR_BIN)),,$(shell $(MKDIR) $(DIR_BIN)))
+	$(if $(wildcard $(DIR_BUILD)),,$(shell $(MKDIR) $(DIR_BUILD)))
 
 #-------------------------------------------------
 # (Internal rule) Pre build operations
@@ -110,7 +111,6 @@ endif
 
 	@echo 'Build $(TARGET) ($(BUILD_MODE))'
 
-
 #-------------------------------------------------
 # Build operations
 #-------------------------------------------------
@@ -118,61 +118,57 @@ endif
 build: __prebuild $(TARGET)
 	@echo 'Build done'
 
-
 #-------------------------------------------------
 # Rebuild operations
 #-------------------------------------------------
 .PHONY: rebuild
 rebuild: clean build
 
-
 #-------------------------------------------------
 # Compile C source files
 #-------------------------------------------------
 $(DIR_BUILD)%.o: $(DIR_SRC)%.c
-	@echo '-- Compiling $<'
-	@$(MKDIR) $(dir $@)
+	@echo 'CC    $@'
 	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-
 #----------------------------------------------------
-# Compile O source files to build the static library
+# Compile object files to build the static library
 #----------------------------------------------------
 $(TARGET): $(OBJECT_FILES)
-	@echo '-- Creating static library $@'
+	@echo 'AR    $@'
 	$(Q)$(AR) $(RCS) $@ $^
-
 
 #-------------------------------------------------
 # Clean generated files
 #-------------------------------------------------
 .PHONY: clean
 clean:
-	@echo 'Clean generated files'
-	@echo '-- Deleting target $(TARGET)'
-	@if [ -n "$(TARGET)" ]; then \
-		$(RM) $(TARGET); \
-	else \
-		echo "Skipping: TARGET is not set"; \
-	fi
-	@echo '-- Deleting objects $(OBJECT_FILES)'
-	@if [ -n "$(OBJECT_FILES)" ]; then \
-		$(RM) $(OBJECT_FILES); \
-	else \
-		echo "Skipping: OBJECT_FILES is not set"; \
-	fi
-	@if [ -n "$(DIR_BUILD)" ]; then \
-		$(RM) $(DIR_BUILD); \
-	else \
-		echo "Skipping: DIR_BUILD is not set"; \
-	fi
-	@if [ -n "$(DIR_LIB)" ]; then \
-		$(RM) $(DIR_LIB); \
-	else \
-		echo "Skipping: DIR_LIB is not set"; \
-	fi
-	@echo 'Clean done'
+	@echo "Clean generated files"
+ifneq ($(wildcard $(TARGET)),)
+	@echo "RM    $(TARGET)"
+	@$(RM) $(TARGET)
+endif
+ifneq ($(wildcard $(OBJECT_FILES)),)
+	@echo "RM    $(OBJECT_FILES)"
+	@$(RM) $(OBJECT_FILES)
+endif
+	@echo "Clean done"
 
+#-------------------------------------------------
+# Clean entire project
+#-------------------------------------------------
+.PHONY: cleanall
+cleanall:
+	@echo "Clean entire project"
+ifneq ($(wildcard $(DIR_BIN)),)
+	@echo "RM    $(DIR_BIN)"
+	@$(RMDIR) $(DIR_BIN)
+endif
+ifneq ($(wildcard $(DIR_BUILD)),)
+	@echo "RM    $(DIR_BUILD)"
+	@$(RMDIR) $(DIR_BUILD)
+endif
+	@echo "Clean done"
 
 #-------------------------------------------------
 # Project informations

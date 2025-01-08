@@ -23,33 +23,40 @@ endif
 #-------------------------------------------------
 .PHONY: clean
 clean:
-	@echo 'Clean application and static library'
+	@echo "===== Clean App & Lib ======="
 	$(Q)$(MAKE) -C $(DIR_APP) clean
 	$(Q)$(MAKE) -C $(DIR_LIB) clean
+	@echo "=============================="
 
 .PHONY: cleanlib
 cleanlib:
-	@echo 'Clean static library'
+	@echo "===== Clean Lib =============="
 	$(Q)$(MAKE) -C $(DIR_LIB) clean
+	@echo "=============================="
 
 .PHONY: cleanapp
 cleanapp:
-	@echo 'Clean application'
+	@echo "===== Clean App =============="
 	$(Q)$(MAKE) -C $(DIR_APP) clean
+	@echo "=============================="
 
 #-------------------------------------------------
 # App Makefile
 #-------------------------------------------------
 .PHONY: app
 app:
+	@echo "===== Build App =============="
 	$(Q)$(MAKE) -C $(DIR_APP)
+	@echo "=============================="
 
 #-------------------------------------------------
 # Lib Makefile
 #-------------------------------------------------
 .PHONY: lib
 lib:
+	@echo "===== Build Lib =============="
 	$(Q)$(MAKE) -C $(DIR_LIB)
+	@echo "=============================="
 
 #-------------------------------------------------
 # App and Lib Makefile
