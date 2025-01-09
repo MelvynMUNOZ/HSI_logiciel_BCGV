@@ -70,7 +70,7 @@ static int callback_cmd_ON(void)
     cmd_t cmd_crossing_light = get_cmd_crossing_light();
     cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
 
-    if (cmd_crossing_light == true)
+    if (cmd_position_light == true)
     {
         set_flag_position_light(true);
     }
@@ -94,7 +94,7 @@ static int callback_cmd_OFF(void)
     cmd_t cmd_crossing_light = get_cmd_crossing_light();
     cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
 
-    if (cmd_crossing_light == false)
+    if (cmd_position_light == false)
     {
         set_flag_position_light(false);
     }
@@ -163,25 +163,15 @@ static const tTransition trans[] = {
 static fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
-
-    /* Here, you can get the parameters of your FSM */
-    cmd_t cmd_position_light = get_cmd_position_light();
-    cmd_t cmd_crossing_light = get_cmd_crossing_light();
-    cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
-
-    flag_t flag_position_light = get_flag_position_light();
-    flag_t flag_crossing_light = get_flag_crossing_light();
-    flag_t flag_highbeam_light = get_flag_highbeam_light();
-
     bit_flag_t bgf_ack = get_bit_flag_bgf_ack();
 
-    bool position_ON = (cmd_crossing_light == true);
-    bool crossing_ON = (cmd_crossing_light == true);
-    bool highbeam_ON = (cmd_crossing_light == true);
+    bool position_ON = (get_cmd_position_light() == true);
+    bool crossing_ON = (get_cmd_crossing_light() == true);
+    bool highbeam_ON = (get_cmd_highbeam_light() == true);
 
-    bool flag_position_ON = (flag_crossing_light == true);
-    bool flag_crossing_ON = (flag_crossing_light == true);
-    bool flag_highbeam_ON = (flag_crossing_light == true);
+    bool flag_position_ON = (get_flag_position_light() == true);
+    bool flag_crossing_ON = (get_flag_crossing_light() == true);
+    bool flag_highbeam_ON = (get_flag_highbeam_light() == true);
 
     bool position_ON_ack = (bgf_ack & BGF_ACK_POSITION_LIGHT);
     bool crossing_ON_ack = (bgf_ack & BGF_ACK_CROSSING_LIGHT);
@@ -250,7 +240,11 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
         }
         break;
     case ST_TERM:
+    case ST_ANY:
         event = EV_ERR;
+        break;
+    default:
+        event = EV_NONE;
         break;
     }
     return event;
