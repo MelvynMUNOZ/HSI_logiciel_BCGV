@@ -17,14 +17,22 @@
  * \param frame : Pointer to the MUX frame buffer
  * \return bool :
  */
-bool mux_read_frame_100ms(int32_t drv_fd, uint8_t frame[DRV_UDP_100MS_FRAME_SIZE]);
+bool mux_read_frame_100ms(int32_t drv_fd);
+
+/**
+ * \brief
+ * \details
+ * \param drv_fd
+ * \param frame
+ * \return bool :
+ */
+bool mux_write_frame_200ms(int32_t drv_fd);
 
 /**
  * \brief Check for a valid frame number in the frame.
  * \details If there the frame number is not equal to the expected frame number (incremental and looping at 100), a warning is logged.
- * \param frame : Pointer to the MUX frame buffer
  */
-void mux_check_frame_number(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE]);
+void mux_check_frame_number();
 
 /**
  * \brief Decode UDP frame from MUX and update application data.
@@ -38,16 +46,20 @@ void mux_check_frame_number(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE]);
  *          - 4 bytes: Engine RPM
  *          - 1 byte (LSB): Battery issues
  *          - 1 byte : CRC8
- * \param frame : Pointer to the MUX frame buffer
  * \return bool : true if the frame crc8 is valid and frame has been decoded, false otherwise
  */
-bool mux_decode_frame(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE]);
+bool mux_decode_frame_100ms();
+
+/**
+ * \brief
+ */
+void mux_encode_frame_200ms();
 
 /**
  * \brief Print raw bytes of MUX frame.
  * \param frame : Pointer to the MUX frame buffer
  */
-void mux_print_raw(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE]);
+void mux_print_raw(const uint8_t *frame, size_t length);
 
 /**
  * \brief

@@ -16,14 +16,13 @@ int main(void)
     bool success = false;
     int32_t ret = 0;
     int32_t driver_fd = 0;
-    uint8_t mux_frame[DRV_UDP_100MS_FRAME_SIZE] = {0};
 
     /***** Starting application *****/
 
     driver_fd = drv_open();
     if (driver_fd == DRV_ERROR)
     {
-        log_error("failed to open driver", NULL);
+        log_error("error while opening driver", NULL);
         return EXIT_FAILURE;
     }
     else if (driver_fd == DRV_VER_MISMATCH)
@@ -40,24 +39,17 @@ int main(void)
     while (quit == false)
     {
         /* Receive and decode frame from MUX */
-        success = mux_read_frame_100ms(driver_fd, mux_frame);
+        success = mux_read_frame_100ms(driver_fd);
         if (success == false)
         {
             continue; /* Behaviour to define: should we exit ? continue to next frame forever */
         }
-        mux_check_frame_number(mux_frame);
-        success = mux_decode_frame(mux_frame);
+        mux_check_frame_number();
+        success = mux_decode_frame_100ms();
         if (success == false)
         {
             continue;
         }
-
-        /* DEBUG */
-        printf("====================");
-        mux_print_raw(mux_frame);
-        mux_print_decoded();
-        printf("====================");
-        /* END DEBUG*/
 
         /* TODO: other implementations */
     }
@@ -67,7 +59,7 @@ int main(void)
     ret = drv_close(driver_fd);
     if (ret == DRV_ERROR)
     {
-        log_error("failed to close driver", NULL);
+        log_error("error while closing driver", NULL);
         return EXIT_FAILURE;
     }
     log_info("driver closed", NULL);

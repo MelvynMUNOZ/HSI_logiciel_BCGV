@@ -2,7 +2,7 @@
  * \file mux.c
  * \brief
  * \details
- * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
+ * \author Raphael CAUSSE - Melvyn MUNOZ - Rol& Cedric TAYO
  */
 
 #include "bcgv_api.h"
@@ -11,31 +11,58 @@
 #include "log.h"
 #include "bit_utils.h"
 
-/**
- * \brief Extract a 32-bit unsigned integer from a frame starting at the given index.
- * \param frame : Pointer to the frame buffer.
- * \param index_start : Starting index in the frame buffer.
- * \return uint32_t : Value extracted from the frame.
- */
-static uint32_t mux_get_uint32_at(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE], int index_start)
-{
-    return (frame[index_start] << 24) | (frame[index_start + 1] << 16) | (frame[index_start + 2] << 8) | frame[index_start + 3];
-}
+#define FUEL_LEVEL_5_PERCENT (FUEL_LEVEL_MAX * 5 / 100)
 
-bool mux_read_frame_100ms(int32_t drv_fd, uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
+#define MUX_100MS_GET_UINT32_AT(index) ((mux_frame_100ms[index] << 24) |     \
+                                        (mux_frame_100ms[index + 1] << 16) | \
+                                        (mux_frame_100ms[index + 2] << 8) |  \
+                                        mux_frame_100ms[index + 3])
+
+#define MUX_200MS_SET_UINT32_AT(index, value)              \
+    do                                                     \
+    {                                                      \
+        mux_frame_200ms[index] = (value >> 24) & 0xFF;     \
+        mux_frame_200ms[index + 1] = (value >> 16) & 0xFF; \
+        mux_frame_200ms[index + 2] = (value >> 8) & 0xFF;  \
+        mux_frame_200ms[index + 3] = value & 0xFF;         \
+    } while (0)
+
+#define MUX_200MS_SET_UINT16_AT(index, value)         \
+    do                                                \
+    {                                                 \
+        mux_frame_200ms[index] = (value >> 8) & 0xFF; \
+        mux_frame_200ms[index + 1] = value & 0xFF;    \
+    } while (0)
+
+/* Internal variables */
+static uint8_t mux_frame_100ms[DRV_UDP_100MS_FRAME_SIZE] = {0};
+static uint8_t mux_frame_200ms[DRV_UDP_200MS_FRAME_SIZE] = {0};
+
+bool mux_read_frame_100ms(int32_t drv_fd)
 {
-    int32_t ret = drv_read_udp_100ms(drv_fd, frame);
+    int32_t ret = drv_read_udp_100ms(drv_fd, mux_frame_100ms);
     if (ret == DRV_ERROR)
     {
-        log_error("failed to read MUX 100ms UDP frame (%u)", get_frame_number());
+        log_error("error while reading from MUX 100ms frame", NULL);
     }
 
     return (ret == DRV_SUCCESS);
 }
 
-void mux_check_frame_number(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
+bool mux_write_frame_200ms(int32_t drv_fd)
 {
-    frame_number_t frame_number = frame[0];
+    int32_t ret = drv_write_udp_200ms(drv_fd, mux_frame_200ms);
+    if (ret == DRV_ERROR)
+    {
+        log_error("error while writing to MUX 200ms frame", NULL);
+    }
+
+    return (ret == DRV_SUCCESS);
+}
+
+void mux_check_frame_number()
+{
+    frame_number_t frame_number = mux_frame_100ms[0];
     frame_number_t expected_frame_number = get_frame_number();
 
     if (frame_number != expected_frame_number)
@@ -48,7 +75,7 @@ void mux_check_frame_number(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
     set_frame_number(expected_frame_number);
 }
 
-bool mux_decode_frame(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
+bool mux_decode_frame_100ms()
 {
     bool ret = false;
     distance_t distance = 0;
@@ -62,8 +89,8 @@ bool mux_decode_frame(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
     crc8_t computed_crc8 = 0;
 
     /* Decode frame only if CRC8 is valid */
-    frame_crc8 = frame[DRV_UDP_100MS_FRAME_SIZE - 1];
-    computed_crc8 = crc8_compute(frame, DRV_UDP_100MS_FRAME_SIZE - 1);
+    frame_crc8 = mux_frame_100ms[DRV_UDP_100MS_FRAME_SIZE - 1];
+    computed_crc8 = crc8_compute(mux_frame_100ms, DRV_UDP_100MS_FRAME_SIZE - 1);
     if (frame_crc8 != computed_crc8)
     {
         log_error("invalid CRC8: 0x%02X (computed 0x%02X)", frame_crc8, computed_crc8);
@@ -72,13 +99,13 @@ bool mux_decode_frame(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
     else
     {
         /* Extract from frame */
-        distance = mux_get_uint32_at(frame, 1);
-        speed = frame[5];
-        chassis_issues = frame[6];
-        motor_issues = frame[7];
-        fuel_level = frame[8];
-        engine_rpm = mux_get_uint32_at(frame, 9);
-        battery_issues = frame[13];
+        distance = MUX_100MS_GET_UINT32_AT(1);
+        speed = mux_frame_100ms[5];
+        chassis_issues = mux_frame_100ms[6];
+        motor_issues = mux_frame_100ms[7];
+        fuel_level = mux_frame_100ms[8];
+        engine_rpm = MUX_100MS_GET_UINT32_AT(9);
+        battery_issues = mux_frame_100ms[13];
 
         /* Store data in app context */
         set_distance(distance);
@@ -90,16 +117,75 @@ bool mux_decode_frame(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
         set_battery_issues(battery_issues);
         set_crc8(frame_crc8);
 
+        /* DEBUG */
+        printf("====================");
+        mux_print_raw(mux_frame_100ms, DRV_UDP_100MS_FRAME_SIZE);
+        mux_print_decoded();
+        printf("====================");
+        /* END DEBUG*/
+
         ret = true;
     }
 
     return ret;
 }
 
-void mux_print_raw(const uint8_t frame[DRV_UDP_100MS_FRAME_SIZE])
+void mux_encode_frame_200ms()
+{
+    uint8_t byte = 0;
+    distance_t distance = get_distance();
+    speed_t speed = get_speed();
+    issues_t chassis_issues = get_chassis_issues();
+    issues_t motor_issues = get_motor_issues();
+    fuel_level_t fuel_level = get_fuel_level();
+    engine_rpm_t engine_rpm = get_engine_rpm();
+    issues_t battery_issues = get_battery_issues();
+    flag_t flag_position_light = get_flag_position_light();
+    flag_t flag_crossing_light = get_flag_crossing_light();
+    flag_t flag_highbeam_light = get_flag_highbeam_light();
+    flag_t flag_indic_hazard = get_flag_indic_hazard();
+    flag_t flag_wiper = get_flag_wiper();
+    flag_t flag_washer = get_flag_washer();
+
+    /* Set first 8 bits */
+    byte |= (flag_position_light & 1U) << 7;
+    byte |= (flag_crossing_light & 1U) << 6;
+    byte |= (flag_highbeam_light & 1U) << 5;
+    byte |= ((fuel_level < FUEL_LEVEL_5_PERCENT) ? 1U : 0U) << 4;
+    byte |= ((motor_issues != MOTOR_ISSUE_NONE) ? 1U : 0U) << 3;
+    byte |= ((chassis_issues & CHASSIS_ISSUE_TYRES_PRESSION) ? 1U : 0U) << 2;
+    byte |= 0U << 1; /* Unused bit, set to 0 */
+    byte |= ((battery_issues & BATTERY_ISSUES_DISCHARGED) ? 1U : 0U);
+    mux_frame_200ms[0] = byte;
+
+    /* Set next 8 bits */
+    byte = 0; /* Reset */
+    byte |= (flag_indic_hazard & 1U) << 7;
+    byte |= ((battery_issues & BATTERY_ISSUES_KO) ? 1U : 0U) << 6;
+    byte |= ((motor_issues & MOTOR_ISSUE_TEMPERATURE_LDR) ? 1U : 0U) << 5;
+    byte |= ((motor_issues & MOTOR_ISSUE_PRESSION) ? 1U : 0U) << 4;
+    byte |= ((motor_issues & MOTOR_ISSUE_OIL_OVERHEAT) ? 1U : 0U) << 3;
+    byte |= ((chassis_issues & CHASSIS_ISSUE_BRAKES) ? 1U : 0U) << 2;
+    byte |= (flag_wiper & 1U) << 1;
+    byte |= (flag_washer & 1U);
+    mux_frame_200ms[1] = byte;
+
+    /* Set remaining bytes in Big Endian */
+    MUX_200MS_SET_UINT32_AT(2, distance);
+    mux_frame_200ms[6] = speed;
+    mux_frame_200ms[7] = fuel_level * 100 / FUEL_LEVEL_MAX;
+    engine_rpm /= 10;
+    MUX_200MS_SET_UINT16_AT(8, engine_rpm);
+
+    /* DEBUG */
+    mux_print_raw(mux_frame_200ms, DRV_UDP_200MS_FRAME_SIZE);
+    /* END DEBUG*/
+}
+
+void mux_print_raw(const uint8_t *frame, size_t length)
 {
     printf("\nMUX [ ");
-    for (size_t i = 0; i < DRV_UDP_100MS_FRAME_SIZE; i++)
+    for (size_t i = 0; i < length; i++)
     {
         printf("%02X ", frame[i]);
     }
@@ -128,11 +214,11 @@ void mux_print_decoded(void)
     }
     else
     {
-        if (chassis_issues AND CHASSIS_ISSUE_TYRES)
+        if (chassis_issues & CHASSIS_ISSUE_TYRES_PRESSION)
         {
             printf("Tyres ");
         }
-        if (chassis_issues AND CHASSIS_ISSUE_BRAKES)
+        if (chassis_issues & CHASSIS_ISSUE_BRAKES)
         {
             printf("Brakes ");
         }
@@ -145,15 +231,15 @@ void mux_print_decoded(void)
     }
     else
     {
-        if (motor_issues AND MOTOR_ISSUE_TYRES)
+        if (motor_issues & MOTOR_ISSUE_PRESSION)
         {
-            printf("Tyres ");
+            printf("Pression ");
         }
-        if (motor_issues AND MOTOR_ISSUE_TEMPERATURE_LDR)
+        if (motor_issues & MOTOR_ISSUE_TEMPERATURE_LDR)
         {
             printf("Temperature LDR ");
         }
-        if (motor_issues AND MOTOR_ISSUE_OIL_OVERHEATING)
+        if (motor_issues & MOTOR_ISSUE_OIL_OVERHEAT)
         {
             printf("Oil Overheating ");
         }
@@ -168,11 +254,11 @@ void mux_print_decoded(void)
     }
     else
     {
-        if (battery_issues AND BATTERY_ISSUES_DISCHARGED)
+        if (battery_issues & BATTERY_ISSUES_DISCHARGED)
         {
             printf("Discharged ");
         }
-        if (battery_issues AND BATTERY_ISSUES_KO)
+        if (battery_issues & BATTERY_ISSUES_KO)
         {
             printf("KO ");
         }

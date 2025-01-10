@@ -1,15 +1,12 @@
 /**
  * \file bit_utils.h
- * \brief Bits utilities.
- * \details
+ * \brief Bit utilities.
  * \author Raphael CAUSSE
  */
 
 #ifndef BIT_UTILS_H
 #define BIT_UTILS_H
 
-#define AND &
-#define OR |
 #define XOR ^
 
 #define CLEAR_BIT(x, bit) (x &= ~bit)
