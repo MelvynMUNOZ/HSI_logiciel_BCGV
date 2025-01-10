@@ -46,7 +46,7 @@ CC := gcc
 CSTD := -std=c99
 
 ### Extra flags to give to the C compiler
-CFLAGS := $(CSTD) -W -Wall -pedantic
+CFLAGS := $(CSTD) -W -Wall -Wextra -pedantic
 
 ### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
 CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include -I./src -I./src/fsm

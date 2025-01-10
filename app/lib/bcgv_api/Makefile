@@ -85,7 +85,7 @@ endif
 #-------------------------------------------------
 .PHONY: __checkdirs
 __checkdirs:
-	$(if $(wildcard $(DIR_BIN)),,$(shell $(MKDIR) $(DIR_BIN)))
+	$(if $(wildcard $(DIR_LIB)),,$(shell $(MKDIR) $(DIR_LIB)))
 	$(if $(wildcard $(DIR_BUILD)),,$(shell $(MKDIR) $(DIR_BUILD)))
 
 #-------------------------------------------------
@@ -160,9 +160,9 @@ endif
 .PHONY: cleanall
 cleanall:
 	@echo "Clean entire project"
-ifneq ($(wildcard $(DIR_BIN)),)
-	@echo "RM    $(DIR_BIN)"
-	@$(RMDIR) $(DIR_BIN)
+ifneq ($(wildcard $(DIR_LIB)),)
+	@echo "RM    $(DIR_LIB)"
+	@$(RMDIR) $(DIR_LIB)
 endif
 ifneq ($(wildcard $(DIR_BUILD)),)
 	@echo "RM    $(DIR_BUILD)"
