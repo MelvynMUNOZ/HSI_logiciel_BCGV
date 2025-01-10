@@ -11,13 +11,8 @@
 #include <stdint.h>
 #include "bcgv_api.h"
 
-#define SERIAL_NUMBER_BGF (10) // numero de serie 11 - 1
-#define SIZE_MSG_TO_WRITE (5)
+bool bgf_read_serial_message(int32_t drvFd);
 
-void bgf_read_serial_message(int32_t drvFd, serial_frame_t serialData[DRV_MAX_FRAMES], uint32_t serialDataLen);
-
-bool bgf_check_msg_received(uint8_t id, uint8_t flag);
-
-void bgf_set_bit_ack(uint8_t id, uint8_t flag);
+bool bgf_write_serial_message(int32_t drvFd);
 
 #endif

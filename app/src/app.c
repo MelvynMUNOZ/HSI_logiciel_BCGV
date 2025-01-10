@@ -9,6 +9,7 @@
 #include "bcgv_api.h"
 #include "mux.h"
 #include "log.h"
+#include "bgf.h"
 
 int main(void)
 {
@@ -52,6 +53,13 @@ int main(void)
         }
 
         /* TODO: other implementations */
+        success = bgf_read_serial_message(driver_fd);
+        log_warn("success of bgf read : %d", success);
+        if (success == false)
+        {
+            log_error("Error bgf : in bgf_read_serial_message", NULL);
+            continue;
+        }
     }
 
     /***** Closing application *****/

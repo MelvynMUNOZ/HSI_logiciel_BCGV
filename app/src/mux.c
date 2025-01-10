@@ -121,7 +121,7 @@ bool mux_decode_frame_100ms()
         printf("====================");
         mux_print_raw(mux_frame_100ms, DRV_UDP_100MS_FRAME_SIZE);
         mux_print_decoded();
-        printf("====================");
+        printf("====================\n");
         /* END DEBUG*/
 
         ret = true;
