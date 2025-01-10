@@ -28,11 +28,11 @@ static flag_t flag_indic_right_saved = false;
 static flag_t flag_indic_left_saved = false;
 
 /**
- * \brief check if the message received is the same at the message sended
+ * \brief Check if the message received is the same at the message sended
  *
- * \param id : message ID
- * \param flag : flag value of the equipement
- * \return boolean
+ * \param id : Message ID
+ * \param flag : Flag value of the equipement
+ * \return boolean : the data in the received message are the same in the sended message
  */
 bool bgf_check_msg_received(uint8_t id, uint8_t flag)
 {
@@ -44,10 +44,10 @@ bool bgf_check_msg_received(uint8_t id, uint8_t flag)
 }
 
 /**
- * \brief set modifications in the ack bit
+ * \brief Set modifications in the ack bit
  *
- * \param id : message ID
- * \param flag : flag value of the equipement
+ * \param id : Message ID
+ * \param flag : Flag value of the equipement
  */
 void bgf_set_bit_ack(uint8_t id, uint8_t flag)
 {
@@ -65,10 +65,10 @@ void bgf_set_bit_ack(uint8_t id, uint8_t flag)
 }
 
 /**
- * \brief read the serial data of the driver, set the bit ack if there are differents values
+ * \brief Read the serial data of the driver, set the bit ack if there are differents values
  *
- * \param drvFd : driver fd value
- * \return boolean
+ * \param drvFd : Fd driver
+ * \return boolean : the execution of the function is correct
  */
 bool bgf_read_serial_message(int32_t drvFd)
 {
@@ -99,12 +99,11 @@ bool bgf_read_serial_message(int32_t drvFd)
 }
 
 /**
- * \brief set all data of one message bcgv to bgf
+ * \brief Set all data of one bcgv message to send it to bgf
  *
- * \param serialData_write : serial data to write
- * \param i
- * \param id
- * \param flag_new
+ * \param serialData_write : Serial data to write
+ * \param id : Message id
+ * \param flag_new : New flag to set
  */
 void bgf_set_one_data(serial_frame_t *serialData_write, uint8_t id, uint8_t flag_new)
 {
@@ -115,14 +114,14 @@ void bgf_set_one_data(serial_frame_t *serialData_write, uint8_t id, uint8_t flag
 }
 
 /**
- * \brief
+ * \brief Write one message on the driver to send to bgf
  *
- * \param drvFd
- * \param serialdatalen
- * \param serialData_write : data to write of serial data
- * \param id : message id
- * \param flag_new : new flag to set
- * \return boolean
+ * \param drvFd : Fd driver
+ * \param serialdatalen : Number of element in serialData structure
+ * \param serialData_write : Data to write of serial data
+ * \param id : Message id
+ * \param flag_new : New flag to set
+ * \return boolean : the execution of the function is correct
  */
 bool bgf_write_one_data(int32_t drvFd, uint32_t serialdatalen, serial_frame_t *serialData_write, uint8_t id, uint8_t flag_new)
 {
@@ -138,10 +137,10 @@ bool bgf_write_one_data(int32_t drvFd, uint32_t serialdatalen, serial_frame_t *s
 }
 
 /**
- * \brief
+ * \brief Check if a flag is different that the precedent flag, in this case, write a message to bgf
  *
- * \param drvFd
- * \return boolean
+ * \param drvFd : Fd driver
+ * \return boolean : the execution of the function is correct
  */
 bool bgf_write_serial_message(int32_t drvFd)
 {

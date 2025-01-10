@@ -47,6 +47,11 @@ static fsm_state_t state = ST_INIT; /* State of the FSM */
 static uint8_t timer_counter = 0;   /* Timer for 1 second delay, increment each 100ms */
 
 /* Callback functions called on transitions */
+
+/**
+ * \brief Set all flags at OFF
+ * \return int
+ */
 static int callback_init(void)
 {
     set_flag_indic_hazard(OFF);
@@ -56,6 +61,10 @@ static int callback_init(void)
     return 0;
 }
 
+/**
+ * \brief If a command OFF is switch to ON, set the associated flag
+ * \return int
+ */
 static int callback_cmd_on(void)
 {
     cmd_t cmd_hazard = get_cmd_indic_hazard();
@@ -78,6 +87,10 @@ static int callback_cmd_on(void)
     return 0;
 }
 
+/**
+ * \brief If a command ON is switch to OFF, unset the associated flag
+ * \return int
+ */
 static int callback_cmd_off(void)
 {
     cmd_t cmd_hazard = get_cmd_indic_hazard();
@@ -100,18 +113,30 @@ static int callback_cmd_off(void)
     return 0;
 }
 
+/**
+ * \brief Do nothing
+ * \return int
+ */
 static int callback_ack_received(void)
 {
     /* Timer counter persists, wait 1sec including ack waiting time */
     return 0;
 }
 
+/**
+ * \brief Callback when the timer is over and the ack is not received, reset the timer
+ * \return int
+ */
 static int callback_ack_not_received(void)
 {
     timer_counter = 0;
     return 0;
 }
 
+/**
+ * \brief Switch the flag of the indicators to do the cycle beetween ON and OFF
+ * \return int
+ */
 static int callback_timeout(void)
 {
     cmd_t cmd_hazard = get_cmd_indic_hazard();
@@ -140,6 +165,10 @@ static int callback_timeout(void)
     return 0;
 }
 
+/**
+ * \brief Set all flags to OFF
+ * \return int
+ */
 static int callback_error(void)
 {
     set_flag_indic_hazard(OFF);

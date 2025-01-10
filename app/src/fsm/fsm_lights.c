@@ -113,7 +113,7 @@ static int callback_cmd_OFF(void)
 }
 
 /**
- * \brief   Callback ON ack
+ * \brief   Callback ON ack, do nothing
  */
 static int callback_cmd_ON_ACK(void)
 {
@@ -157,8 +157,8 @@ static const tTransition trans[] = {
 
 /**
  * \brief Get the next event object
- * \param current_state :
- * \return fsm_event_t :
+ * \param current_state : actual state of the machine
+ * \return fsm_event_t : new state of the machine
  */
 static fsm_event_t get_next_event(fsm_state_t current_state)
 {
