@@ -9,8 +9,11 @@ BUILD_MODE := release
 # Define source files to compile
 SOURCES := \
 	app.c \
-	fsm/fsm_indicators.c \
-	fsm/fsm_lights.c
+	crc8.c \
+	log.c \
+	mux.c \
+	# fsm/fsm_indicators.c \
+	# fsm/fsm_lights.c
 
 
 #==============================================================================
@@ -43,7 +46,7 @@ CC := gcc
 CSTD := -std=c99
 
 ### Extra flags to give to the C compiler
-CFLAGS := $(CSTD) -W -Wall -pedantic
+CFLAGS := $(CSTD) -W -Wall -Wextra -pedantic
 
 ### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
 CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include -I./src -I./src/fsm
@@ -65,9 +68,8 @@ RELEASE_FLAGS := -O2 -g0
 
 ### Commands
 MKDIR := mkdir -p
-RM    := rm -rf
-CP    := cp -rf
-MV    := mv
+RM    := rm -f
+RMDIR := rm -rf
 
 
 #==============================================================================
@@ -84,19 +86,13 @@ else
     Q :=
 endif
 
-
 #-------------------------------------------------
 # (Internal rule) Check directories
 #-------------------------------------------------
 .PHONY: __checkdirs
 __checkdirs:
-	@if [ ! -d "$(DIR_BIN)" ]; then \
-		$(MKDIR) $(DIR_BIN); \
-	fi
-	@if [ ! -d "$(DIR_BUILD)" ]; then \
-		$(MKDIR) $(DIR_BUILD); \
-	fi
-
+	$(if $(wildcard $(DIR_BIN)),,$(shell $(MKDIR) $(DIR_BIN)))
+	$(if $(wildcard $(DIR_BUILD)),,$(shell $(MKDIR) $(DIR_BUILD)))
 
 #-------------------------------------------------
 # (Internal rule) Pre build operations
@@ -119,16 +115,14 @@ else ifeq ($(BUILD_MODE),release)
 	$(eval CFLAGS += $(RELEASE_FLAGS))
 endif
 
-	@echo 'Build $(TARGET) ($(BUILD_MODE))'
-
+	@echo "Build $(TARGET) ($(BUILD_MODE))"
 
 #-------------------------------------------------
 # Build operations
 #-------------------------------------------------
 .PHONY: build
 build: __prebuild $(TARGET)
-	@echo 'Build done'
-
+	@echo "Build done"
 
 #-------------------------------------------------
 # Rebuild operations
@@ -136,57 +130,65 @@ build: __prebuild $(TARGET)
 .PHONY: rebuild
 rebuild: clean build
 	
-
 #-------------------------------------------------
 # Link object files into target target
 #-------------------------------------------------
 $(TARGET): $(OBJECT_FILES)
-	@echo '-- Linking target $@'
+	@echo "LD    $@"
 	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
-
 
 #-------------------------------------------------
 # Compile C source files
 #-------------------------------------------------
 $(DIR_BUILD)%.o: $(DIR_SRC)%.c
-	@echo '-- Compiling $<'
+	@echo "CC    $@"
 	@$(MKDIR) $(dir $@)
 	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@ 
-
 
 #-------------------------------------------------
 # Clean generated files
 #-------------------------------------------------
 .PHONY: clean
 clean:
-	@echo 'Clean generated files'
-	@echo '-- Deleting target $(TARGET)'
-	@if [ -n "$(TARGET)" ]; then \
-		$(RM) $(TARGET); \
-	else \
-		echo "Skipping: TARGET is not set"; \
-	fi
-	@echo '-- Deleting objects $(OBJECT_FILES)'
-	@if [ -n "$(OBJECT_FILES)" ]; then \
-		$(RM) $(OBJECT_FILES); \
-	else \
-		echo "Skipping: OBJECT_FILES is not set"; \
-	fi
-	@echo 'Clean done'
+	@echo "Clean generated files"
+ifneq ($(wildcard $(TARGET)),)
+	@echo "RM    $(TARGET)"
+	@$(RM) $(TARGET)
+endif
+ifneq ($(wildcard $(OBJECT_FILES)),)
+	@echo "RM    $(OBJECT_FILES)"
+	@$(RM) $(OBJECT_FILES)
+endif
+	@echo "Clean done"
 
+#-------------------------------------------------
+# Clean entire project
+#-------------------------------------------------
+.PHONY: cleanall
+cleanall:
+	@echo "Clean entire project"
+ifneq ($(wildcard $(DIR_BIN)),)
+	@echo "RM    $(DIR_BIN)"
+	@$(RMDIR) $(DIR_BIN)
+endif
+ifneq ($(wildcard $(DIR_BUILD)),)
+	@echo "RM    $(DIR_BUILD)"
+	@$(RMDIR) $(DIR_BUILD)
+endif
+	@echo "Clean done"
 
 #-------------------------------------------------
 # Project informations
 #-------------------------------------------------
 .PHONY: info
 info:
-	@echo 'Build configurations'
-	@echo '-- CC: $(CC)'
-	@echo '-- CFLAGS: $(CFLAGS)'
-	@echo '-- CPPFLAGS: $(CPPFLAGS)'
-	@echo '-- LDFLAGS: $(LDFLAGS)'
-	@echo '-- LDLIBS: $(LDLIBS)'
-	@echo 'Files'
-	@echo '-- TARGET: $(TARGET)'
-	@echo '-- SOURCE_FILES: $(SOURCE_FILES)'
-	@echo '-- OBJECT_FILES: $(OBJECT_FILES)'
+	@echo "Build configurations"
+	@echo "-- CC: $(CC)"
+	@echo "-- CFLAGS: $(CFLAGS)"
+	@echo "-- CPPFLAGS: $(CPPFLAGS)"
+	@echo "-- LDFLAGS: $(LDFLAGS)"
+	@echo "-- LDLIBS: $(LDLIBS)"
+	@echo "Files"
+	@echo "-- TARGET: $(TARGET)"
+	@echo "-- SOURCE_FILES: $(SOURCE_FILES)"
+	@echo "-- OBJECT_FILES: $(OBJECT_FILES)"

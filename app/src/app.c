@@ -7,50 +7,51 @@
 
 #include "drv_api.h"
 #include "bcgv_api.h"
+#include "mux.h"
+#include "log.h"
 
 int main(void)
 {
-    int32_t ret;
-    int32_t driver_fd;
-    uint8_t udp_frame[DRV_UDP_100MS_FRAME_SIZE];
+    bool quit = false;
+    bool success = false;
+    int32_t ret = 0;
+    int32_t driver_fd = 0;
 
     /***** Starting application *****/
 
     driver_fd = drv_open();
     if (driver_fd == DRV_ERROR)
     {
-        printf("ERROR: failed to open driver\n");
+        log_error("error while opening driver", NULL);
         return EXIT_FAILURE;
     }
     else if (driver_fd == DRV_VER_MISMATCH)
     {
-        printf("ERROR: driver version mismatch\n");
+        log_error("driver version mismatch", NULL);
         return EXIT_FAILURE;
     }
-    printf("INFO: driver opened\n");
+    log_info("driver opened", NULL);
 
     bcgv_ctx_init();
 
     /***** Main loop *****/
 
-    while (1)
+    while (quit == false)
     {
-        ret = drv_read_udp_100ms(driver_fd, udp_frame);
-        if (ret == DRV_ERROR)
+        /* Receive and decode frame from MUX */
+        success = mux_read_frame_100ms(driver_fd);
+        if (success == false)
         {
-            printf("ERROR: failed to read udp frame 100ms\n");
+            continue; /* Behaviour to define: should we exit ? continue to next frame forever */
+        }
+        mux_check_frame_number();
+        success = mux_decode_frame_100ms();
+        if (success == false)
+        {
             continue;
         }
 
-        /* TMP: print each byte for now */
-        printf("MUX > [");
-        for (size_t i = 0; i < DRV_UDP_100MS_FRAME_SIZE; i++)
-        {
-            printf("%02X ", udp_frame[i]);
-        }
-        printf("]\n");
-
-        /* TODO: real implementation */
+        /* TODO: other implementations */
     }
 
     /***** Closing application *****/
@@ -58,10 +59,10 @@ int main(void)
     ret = drv_close(driver_fd);
     if (ret == DRV_ERROR)
     {
-        printf("ERROR: failed to close driver\n");
+        log_error("error while closing driver", NULL);
         return EXIT_FAILURE;
     }
-    printf("INFO: driver closed\n");
+    log_info("driver closed", NULL);
 
     return EXIT_SUCCESS;
 }

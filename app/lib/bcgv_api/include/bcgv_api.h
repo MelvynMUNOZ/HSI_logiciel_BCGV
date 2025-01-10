@@ -19,7 +19,8 @@
 
 #define ENGINE_RPM_MAX (10000)
 
-// Commands for windshield washer
+
+// Commands
 typedef bool cmd_t;
 
 // Frame number looping 100->1
@@ -32,20 +33,18 @@ typedef uint32_t distance_t;
 typedef uint8_t speed_t;
 
 // Chassis issues
-typedef enum
-{
+typedef enum {
     CHASSIS_ISSUE_NONE = 0,
-    CHASSIS_ISSUE_TYRES = (1 << 0),
+    CHASSIS_ISSUE_TYRES_PRESSION = (1 << 0),
     CHASSIS_ISSUE_BRAKES = (1 << 1),
 } chassis_issues_t;
 
 // Motor issues
-typedef enum
-{
+typedef enum {
     MOTOR_ISSUE_NONE = 0,
-    MOTOR_ISSUE_TYRES = (1 << 0),
+    MOTOR_ISSUE_PRESSION = (1 << 0),
     MOTOR_ISSUE_TEMPERATURE_LDR = (1 << 1),
-    MOTOR_ISSUE_OIL_OVERHEATING = (1 << 2),
+    MOTOR_ISSUE_OIL_OVERHEAT = (1 << 2),
 } motor_issues_t;
 
 // Issues, bit-carrying
@@ -58,8 +57,7 @@ typedef uint8_t fuel_level_t;
 typedef uint32_t engine_rpm_t;
 
 // Battery issues
-typedef enum
-{
+typedef enum {
     BATTERY_ISSUES_NONE = 0,
     BATTERY_ISSUES_DISCHARGED = (1 << 0),
     BATTERY_ISSUES_KO = (1 << 1),
@@ -69,8 +67,7 @@ typedef enum
 typedef uint8_t crc8_t;
 
 // [BCGV -> BGF] Message ID
-typedef enum
-{
+typedef enum {
     BCGV_BGF_MSG_ID_1 = 1,
     BCGV_BGF_MSG_ID_2 = 2,
     BCGV_BGF_MSG_ID_3 = 3,
@@ -81,18 +78,16 @@ typedef enum
 // [BCGV -> MUX] Flag
 typedef bool flag_t;
 
-// Bit-carrying flag
+// Bit-carrying flag 
 typedef uint8_t bit_flag_t;
 
 // BGF message acknowledgement bits
-typedef enum
-{
+typedef enum {
     BGF_ACK_POSITION_LIGHT = (1 << 0),
     BGF_ACK_CROSSING_LIGHT = (1 << 1),
     BGF_ACK_HIGHBEAM_LIGHT = (1 << 2),
     BGF_ACK_INDIC_LEFT = (1 << 3),
     BGF_ACK_INDIC_RIGHT = (1 << 4),
-    BGF_ACK_INDIC_HAZARD = (1 << 5),
 } bgf_ack_t;
 
 /**
