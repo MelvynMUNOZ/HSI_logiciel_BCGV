@@ -12,8 +12,9 @@ SOURCES := \
 	crc8.c \
 	log.c \
 	mux.c \
-	# fsm/fsm_indicators.c \
-	# fsm/fsm_lights.c
+	bgf.c \
+	fsm/fsm_indicators.c \
+	fsm/fsm_lights.c
 
 
 #==============================================================================
@@ -52,7 +53,7 @@ CFLAGS := $(CSTD) -W -Wall -Wextra -pedantic
 CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include -I./src -I./src/fsm
 
 ### Extra flags to give to compiler when it invokes the linker (e.g. -L ...)
-LDFLAGS := -L../driver/lib -L./lib/bcgv_api/lib
+LDFLAGS := -L../driver/lib -L./lib/bcgv_api/bin
 
 ### Library names given to compiler when it invokes the linker (e.g. -l ...)
 LDLIBS := -l:drv_api.a -l:bcgv_api.a

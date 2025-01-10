@@ -17,7 +17,7 @@ SOURCES := bcgv_api.c
 ### Predefined directories
 DIR_BUILD := build/
 DIR_SRC := src/
-DIR_LIB := lib/
+DIR_LIB := bin/
 
 ### Target
 TARGET := $(DIR_LIB)$(EXECUTABLE_NAME).a
