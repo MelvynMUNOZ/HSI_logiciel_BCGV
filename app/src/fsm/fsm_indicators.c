@@ -197,9 +197,9 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
     bool hazard_on = (cmd_hazard == ON);
     bool left_on = (cmd_left == ON);
     bool right_on = (cmd_right == ON);
-    bool hazard_ack = (bgf_ack AND BGF_ACK_INDIC_HAZARD);
-    bool left_ack = (bgf_ack AND BGF_ACK_INDIC_LEFT);
-    bool right_ack = (bgf_ack AND BGF_ACK_INDIC_RIGHT);
+    bool hazard_ack = ((bgf_ack & BGF_ACK_INDIC_LEFT) && (bgf_ack & BGF_ACK_INDIC_RIGHT));
+    bool left_ack = (bgf_ack & BGF_ACK_INDIC_LEFT);
+    bool right_ack = (bgf_ack & BGF_ACK_INDIC_RIGHT);
 
     switch (current_state)
     {
@@ -231,7 +231,8 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
             if ((hazard_on && hazard_ack))
             {
                 event = EV_ACK_RECEIVED;
-                CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_HAZARD);
+                CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_LEFT);
+                CLEAR_BIT(bgf_ack, BGF_ACK_INDIC_RIGHT);
             }
             if (left_on && left_ack)
             {

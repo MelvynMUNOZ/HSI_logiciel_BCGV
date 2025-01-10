@@ -183,9 +183,9 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
     bool flag_crossing_ON = (flag_crossing_light == true);
     bool flag_highbeam_ON = (flag_crossing_light == true);
 
-    bool position_ON_ack = (bgf_ack AND BGF_ACK_POSITION_LIGHT);
-    bool crossing_ON_ack = (bgf_ack AND BGF_ACK_CROSSING_LIGHT);
-    bool highbeam_ON_ack = (bgf_ack AND BGF_ACK_HIGHBEAM_LIGHT);
+    bool position_ON_ack = (bgf_ack & BGF_ACK_POSITION_LIGHT);
+    bool crossing_ON_ack = (bgf_ack & BGF_ACK_CROSSING_LIGHT);
+    bool highbeam_ON_ack = (bgf_ack & BGF_ACK_HIGHBEAM_LIGHT);
 
     /* Build all the events */
 
