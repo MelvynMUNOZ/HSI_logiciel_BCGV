@@ -5,15 +5,14 @@
  * \author Raphael CAUSSE
  */
 
-#include <stdlib.h>
-#include "bcgv_api.h"
+/***** Includes **************************************************************/
+
+#include "fsm_common.h"
 #include "fsm_indicators.h"
-#include "bit_utils.h"
 
-#define ON (true)
-#define OFF (false)
+/***** Definitions ***********************************************************/
 
-#define TIMER_1S_COUNT_100MS (10)
+#define TRANS_COUNT (sizeof(trans_table) / sizeof(*trans_table))
 
 /* States */
 typedef enum
@@ -42,15 +41,52 @@ typedef enum
     EV_ERR = 255         /* Error event */
 } fsm_event_t;
 
-/* Static variables for the FSM */
+/* State transition */
+typedef struct
+{
+    fsm_state_t state;
+    fsm_event_t event;
+    int (*callback)(void);
+    int next_state;
+} transition_t;
+
+/***** Static Functions Declarations *****************************************/
+
+static int callback_init(void);
+static int callback_cmd_on(void);
+static int callback_cmd_off(void);
+static int callback_ack_not_received(void);
+static int callback_timeout(void);
+static int callback_error(void);
+static fsm_event_t get_next_event(fsm_state_t current_state);
+
+/***** Static Variables ******************************************************/
+
 static fsm_state_t state = ST_INIT; /* State of the FSM */
 static uint8_t timer_counter = 0;   /* Timer for 1 second delay, increment each 100ms */
 
-/* Callback functions called on transitions */
+static const transition_t trans_table[] = {
+    {ST_INIT, EV_NONE, &callback_init, ST_OFF},
+    {ST_OFF, EV_CMD_ON, &callback_cmd_on, ST_ACTIVATED_ON},
+    {ST_ACTIVATED_ON, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
+    {ST_ACTIVATED_ON, EV_ACK_RECEIVED, NULL, ST_ACKNOWLEDGED_ON},
+    {ST_ACTIVATED_ON, EV_ACK_NOT_RECEIVED, &callback_ack_not_received, ST_ERROR},
+    {ST_ACTIVATED_OFF, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
+    {ST_ACTIVATED_OFF, EV_ACK_RECEIVED, NULL, ST_ACKNOWLEDGED_OFF},
+    {ST_ACTIVATED_OFF, EV_ACK_NOT_RECEIVED, &callback_ack_not_received, ST_ERROR},
+    {ST_ACKNOWLEDGED_ON, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
+    {ST_ACKNOWLEDGED_ON, EV_TIMEOUT, &callback_timeout, ST_ACTIVATED_OFF},
+    {ST_ACKNOWLEDGED_OFF, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
+    {ST_ACKNOWLEDGED_OFF, EV_TIMEOUT, &callback_timeout, ST_ACTIVATED_ON},
+    {ST_ERROR, EV_ERR, &callback_error, ST_TERM},
+    {ST_ANY, EV_ERR, &callback_error, ST_TERM},
+};
+
+/***** Static Functions Definitions ******************************************/
 
 /**
- * \brief Set all flags at OFF
- * \return int
+ * \brief Set all flags at OFF.
+ * \return int : Negative value for error code.
  */
 static int callback_init(void)
 {
@@ -62,8 +98,8 @@ static int callback_init(void)
 }
 
 /**
- * \brief If a command OFF is switch to ON, set the associated flag
- * \return int
+ * \brief Set flag to ON when command received is ON.
+ * \return int : Negative value for error code.
  */
 static int callback_cmd_on(void)
 {
@@ -88,8 +124,8 @@ static int callback_cmd_on(void)
 }
 
 /**
- * \brief If a command ON is switch to OFF, unset the associated flag
- * \return int
+ * \brief Set flag to OFF when command received is OFF.
+ * \return int : Negative value for error code.
  */
 static int callback_cmd_off(void)
 {
@@ -114,18 +150,8 @@ static int callback_cmd_off(void)
 }
 
 /**
- * \brief Do nothing
- * \return int
- */
-static int callback_ack_received(void)
-{
-    /* Timer counter persists, wait 1sec including ack waiting time */
-    return 0;
-}
-
-/**
- * \brief Callback when the timer is over and the ack is not received, reset the timer
- * \return int
+ * \brief reset the timer if ack is not received in time (1 second).
+ * \return int : Negative value for error code.
  */
 static int callback_ack_not_received(void)
 {
@@ -134,8 +160,8 @@ static int callback_ack_not_received(void)
 }
 
 /**
- * \brief Switch the flag of the indicators to do the cycle beetween ON and OFF
- * \return int
+ * \brief Toggle flag to cycle beetween ON and OFF.
+ * \return int : Negative value for error code.
  */
 static int callback_timeout(void)
 {
@@ -166,8 +192,8 @@ static int callback_timeout(void)
 }
 
 /**
- * \brief Set all flags to OFF
- * \return int
+ * \brief Set all flags to OFF.
+ * \return int : Negative value for error code.
  */
 static int callback_error(void)
 {
@@ -176,35 +202,6 @@ static int callback_error(void)
     set_flag_indic_right(OFF);
     return -1;
 }
-
-/* Transition structure */
-typedef struct
-{
-    fsm_state_t state;
-    fsm_event_t event;
-    int (*callback)(void);
-    int next_state;
-} transition_t;
-
-/* Transition table */
-static const transition_t trans[] = {
-    {ST_INIT, EV_NONE, &callback_init, ST_OFF},
-    {ST_OFF, EV_CMD_ON, &callback_cmd_on, ST_ACTIVATED_ON},
-    {ST_ACTIVATED_ON, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
-    {ST_ACTIVATED_ON, EV_ACK_RECEIVED, &callback_ack_received, ST_ACKNOWLEDGED_ON},
-    {ST_ACTIVATED_ON, EV_ACK_NOT_RECEIVED, &callback_ack_not_received, ST_ERROR},
-    {ST_ACTIVATED_OFF, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
-    {ST_ACTIVATED_OFF, EV_ACK_RECEIVED, &callback_ack_received, ST_ACKNOWLEDGED_OFF},
-    {ST_ACTIVATED_OFF, EV_ACK_NOT_RECEIVED, &callback_ack_not_received, ST_ERROR},
-    {ST_ACKNOWLEDGED_ON, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
-    {ST_ACKNOWLEDGED_ON, EV_TIMEOUT, &callback_timeout, ST_ACTIVATED_OFF},
-    {ST_ACKNOWLEDGED_OFF, EV_CMD_OFF, &callback_cmd_off, ST_OFF},
-    {ST_ACKNOWLEDGED_OFF, EV_TIMEOUT, &callback_timeout, ST_ACTIVATED_ON},
-    {ST_ERROR, EV_ERR, &callback_error, ST_TERM},
-    {ST_ANY, EV_ERR, &callback_error, ST_TERM},
-};
-
-#define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
 
 /**
  * \brief Get the next event for the FSM.
@@ -310,6 +307,8 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
     return event;
 }
 
+/***** Functions *************************************************************/
+
 int fsm_indicators_run(void)
 {
     int ret = -1;
@@ -324,17 +323,17 @@ int fsm_indicators_run(void)
         for (i = 0; i < TRANS_COUNT; i++)
         {
             /* If State is current state OR The transition applies to all states ...*/
-            if ((state == trans[i].state) || (ST_ANY == trans[i].state))
+            if ((state == trans_table[i].state) || (ST_ANY == trans_table[i].state))
             {
                 /* If event is the transition event OR the event applies to all */
-                if ((event == trans[i].event) || (EV_ANY == trans[i].event))
+                if ((event == trans_table[i].event) || (EV_ANY == trans_table[i].event))
                 {
                     /* Apply the new state */
-                    state = trans[i].next_state;
-                    if (trans[i].callback != NULL)
+                    state = trans_table[i].next_state;
+                    if (trans_table[i].callback != NULL)
                     {
                         /* Call the state function */
-                        ret = (trans[i].callback)();
+                        ret = (trans_table[i].callback)();
                     }
                     break;
                 }

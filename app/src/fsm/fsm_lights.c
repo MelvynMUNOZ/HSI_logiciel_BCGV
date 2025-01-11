@@ -1,25 +1,27 @@
 /**
- * \file        fsm_classic_light.c
- * \author      Melvyn MUNOZ
- * \date        2024-12-16
- * \brief       This is a template file to create a Finite State Machine.
+ * \file fsm_lights.c
+ * \brief Interface for finite state machine for lights (position, crossing, highbeam).
+ * \details Handle states, events and transitions for the FSM.
+ * \author Melvyn MUNOZ
  */
 
-#include <stdlib.h>
-#include "bcgv_api.h"
-#include "fsm_lights.h"
-#include "bit_utils.h"
+/***** Includes **************************************************************/
 
-#define TIMER_1S_COUNT_100MS (10)
+#include "fsm_common.h"
+#include "fsm_lights.h"
+
+/***** Definitions ***********************************************************/
+
+#define TRANS_COUNT (sizeof(trans_table) / sizeof(*trans_table))
 
 /* States */
 typedef enum
 {
     ST_ANY = -1, /* Any state */
     ST_INIT = 0, /* Init state */
-    ST_ALL_OFF = 1,
-    ST_ONE_ON = 2,
-    ST_ONE_ON_ACK = 3,
+    ST_ALL_OFF,
+    ST_ONE_ON,
+    ST_ONE_ON_ACK,
     ST_TERM = 255 /* Final state */
 } fsm_state_t;
 
@@ -28,41 +30,74 @@ typedef enum
 {
     EV_ANY = -1, /* Any event */
     EV_NONE = 0, /* No event */
-    EV_CMD_ON = 1,
-    EV_CMD_OFF = 2,
-    EV_CMD_ON_ACK = 3,
+    EV_CMD_ON,
+    EV_CMD_OFF,
+    EV_CMD_ON_ACK,
     EV_ERR = 255 /* Error event */
 } fsm_event_t;
 
-/* Static variable */
-static fsm_state_t state = ST_INIT;
-static uint8_t timer_counter = 0;
+/* State transition */
+typedef struct
+{
+    fsm_state_t state;
+    fsm_event_t event;
+    int (*callback)(void);
+    int next_state;
+} transition_t;
 
-/* Callback functions called on transitions */
+/***** Static Functions Declarations *****************************************/
+
+static int callback_init(void);
+static int callback_error(void);
+static int callback_cmd_ON(void);
+static int callback_cmd_OFF(void);
+static int callback_cmd_ON_wait_ACK(void);
+static fsm_event_t get_next_event(fsm_state_t current_state);
+
+/***** Static Variables ******************************************************/
+
+static fsm_state_t state = ST_INIT; /* State of the FSM */
+static uint8_t timer_counter = 0;   /* Timer for 1 second delay, increment each 100ms */
+
+static const transition_t trans_table[] = {
+    {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
+    {ST_ALL_OFF, EV_CMD_ON, &callback_cmd_ON, ST_ONE_ON},
+    {ST_ONE_ON, EV_CMD_OFF, &callback_cmd_OFF, ST_ALL_OFF},
+    {ST_ONE_ON, EV_NONE, &callback_cmd_ON_wait_ACK, ST_ONE_ON},
+    {ST_ONE_ON, EV_CMD_ON_ACK, NULL, ST_ONE_ON_ACK},
+    {ST_ONE_ON_ACK, EV_CMD_OFF, &callback_init, ST_ALL_OFF},
+    {ST_ONE_ON, EV_ERR, &callback_error, ST_TERM},
+    {ST_ANY, EV_ERR, &callback_error, ST_TERM},
+};
+
+/***** Static Functions Definitions ******************************************/
 
 /**
- * \brief    Initialise all light flags to false
+ * \brief Initialise all light flags to OFF.
+ * \return int : Negative value for error code.
  */
 static int callback_init(void)
 {
-    set_flag_position_light(false);
-    set_flag_crossing_light(false);
-    set_flag_highbeam_light(false);
+    set_flag_position_light(OFF);
+    set_flag_crossing_light(OFF);
+    set_flag_highbeam_light(OFF);
     return 0;
 }
 /**
- * \brief   Change position light to true, crossing light to true, highbeam light to true,
+ * \brief Set all flags to OFF.
+ * \return int : Negative value for error code.
  */
-static int FsmError(void)
+static int callback_error(void)
 {
-    set_flag_position_light(false);
-    set_flag_crossing_light(false);
-    set_flag_highbeam_light(false);
+    set_flag_position_light(OFF);
+    set_flag_crossing_light(OFF);
+    set_flag_highbeam_light(OFF);
     return -1;
 }
 
 /**
- * \brief   Change one type of light to true
+ * \brief Change one type of light to ON.
+ * \return int : Negative value for error code.
  */
 static int callback_cmd_ON(void)
 {
@@ -70,23 +105,30 @@ static int callback_cmd_ON(void)
     cmd_t cmd_crossing_light = get_cmd_crossing_light();
     cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
 
-    if (cmd_position_light == true)
+    if (cmd_position_light == ON)
     {
-        set_flag_position_light(true);
+        set_flag_position_light(ON);
+        set_flag_crossing_light(OFF);
+        set_flag_highbeam_light(OFF);
     }
-    if (cmd_crossing_light == true)
+    if (cmd_crossing_light == ON)
     {
-        set_flag_crossing_light(true);
+        set_flag_position_light(OFF);
+        set_flag_crossing_light(ON);
+        set_flag_highbeam_light(OFF);
     }
-    if (cmd_highbeam_light == true)
+    if (cmd_highbeam_light == ON)
     {
-        set_flag_highbeam_light(true);
+        set_flag_position_light(OFF);
+        set_flag_crossing_light(OFF);
+        set_flag_highbeam_light(ON);
     }
     return 0;
 }
 
 /**
- * \brief   Change one type of light to false
+ * \brief Change one type of light to OFF.
+ * \return int : Negative value for error code.
  */
 static int callback_cmd_OFF(void)
 {
@@ -94,17 +136,17 @@ static int callback_cmd_OFF(void)
     cmd_t cmd_crossing_light = get_cmd_crossing_light();
     cmd_t cmd_highbeam_light = get_cmd_highbeam_light();
 
-    if (cmd_position_light == false)
+    if (cmd_position_light == OFF)
     {
-        set_flag_position_light(false);
+        set_flag_position_light(OFF);
     }
-    if (cmd_crossing_light == false)
+    if (cmd_crossing_light == OFF)
     {
-        set_flag_crossing_light(false);
+        set_flag_crossing_light(OFF);
     }
-    if (cmd_highbeam_light == false)
+    if (cmd_highbeam_light == OFF)
     {
-        set_flag_highbeam_light(false);
+        set_flag_highbeam_light(OFF);
     }
 
     timer_counter = 0;
@@ -113,15 +155,8 @@ static int callback_cmd_OFF(void)
 }
 
 /**
- * \brief   Callback ON ack, do nothing
- */
-static int callback_cmd_ON_ACK(void)
-{
-    return 0;
-}
-
-/**
- * \brief   Callback for waiting ON ack
+ * \brief Callback for waiting ON ack.
+ * \return int : Negative value for error code.
  */
 static int callback_cmd_ON_wait_ACK(void)
 {
@@ -129,56 +164,27 @@ static int callback_cmd_ON_wait_ACK(void)
     return 0;
 }
 
-/* Transition structure */
-typedef struct
-{
-    fsm_state_t state;
-    fsm_event_t event;
-    int (*callback)(void);
-    fsm_state_t next_state;
-} tTransition;
-
-/* Transition table */
-static const tTransition trans[] = {
-    {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
-
-    {ST_ALL_OFF, EV_CMD_ON, &callback_cmd_ON, ST_ONE_ON},
-    {ST_ONE_ON, EV_CMD_OFF, &callback_cmd_OFF, ST_ALL_OFF},
-    {ST_ONE_ON, EV_NONE, &callback_cmd_ON_wait_ACK, ST_ONE_ON},
-    {ST_ONE_ON, EV_CMD_ON_ACK, &callback_cmd_ON_ACK, ST_ONE_ON_ACK},
-    {ST_ONE_ON_ACK, EV_CMD_OFF, &callback_init, ST_ALL_OFF},
-
-    {ST_ONE_ON, EV_ERR, &FsmError, ST_TERM},
-    {ST_ANY, EV_ERR, &FsmError, ST_TERM}
-
-};
-
-#define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
-
 /**
- * \brief Get the next event object
- * \param current_state : actual state of the machine
- * \return fsm_event_t : new state of the machine
+ * \brief Get the next event for the FSM.
+ * \param current_state : Current FSM state.
+ * \return fsm_event_t : Next event value.
  */
 static fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
     bit_flag_t bgf_ack = get_bit_flag_bgf_ack();
 
-    bool position_ON = (get_cmd_position_light() == true);
-    bool crossing_ON = (get_cmd_crossing_light() == true);
-    bool highbeam_ON = (get_cmd_highbeam_light() == true);
-
-    bool flag_position_ON = (get_flag_position_light() == true);
-    bool flag_crossing_ON = (get_flag_crossing_light() == true);
-    bool flag_highbeam_ON = (get_flag_highbeam_light() == true);
-
+    bool position_ON = (get_cmd_position_light() == ON);
+    bool crossing_ON = (get_cmd_crossing_light() == ON);
+    bool highbeam_ON = (get_cmd_highbeam_light() == ON);
+    bool flag_position_ON = (get_flag_position_light() == ON);
+    bool flag_crossing_ON = (get_flag_crossing_light() == ON);
+    bool flag_highbeam_ON = (get_flag_highbeam_light() == ON);
     bool position_ON_ack = (bgf_ack & BGF_ACK_POSITION_LIGHT);
     bool crossing_ON_ack = (bgf_ack & BGF_ACK_CROSSING_LIGHT);
     bool highbeam_ON_ack = (bgf_ack & BGF_ACK_HIGHBEAM_LIGHT);
 
     /* Build all the events */
-
     switch (current_state)
     {
     case ST_ALL_OFF:
@@ -187,6 +193,7 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
             event = EV_CMD_ON;
         }
         break;
+
     case ST_ONE_ON:
         if (!position_ON && !crossing_ON && !highbeam_ON)
         {
@@ -233,22 +240,27 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
             event = EV_ERR;
         }
         break;
+
     case ST_ONE_ON_ACK:
         if (!position_ON && !crossing_ON && !highbeam_ON)
         {
             event = EV_CMD_OFF;
         }
         break;
+
     case ST_TERM:
     case ST_ANY:
         event = EV_ERR;
         break;
+
     default:
-        event = EV_NONE;
         break;
     }
+
     return event;
 }
+
+/***** Functions *************************************************************/
 
 int fsm_lights_run(void)
 {
@@ -264,22 +276,23 @@ int fsm_lights_run(void)
         for (i = 0; i < TRANS_COUNT; i++)
         {
             /* If State is current state OR The transition applies to all states ...*/
-            if ((state == trans[i].state) || (ST_ANY == trans[i].state))
+            if ((state == trans_table[i].state) || (ST_ANY == trans_table[i].state))
             {
                 /* If event is the transition event OR the event applies to all */
-                if ((event == trans[i].event) || (EV_ANY == trans[i].event))
+                if ((event == trans_table[i].event) || (EV_ANY == trans_table[i].event))
                 {
                     /* Apply the new state */
-                    state = trans[i].next_state;
-                    if (trans[i].callback != NULL)
+                    state = trans_table[i].next_state;
+                    if (trans_table[i].callback != NULL)
                     {
                         /* Call the state function */
-                        ret = (trans[i].callback)();
+                        ret = (trans_table[i].callback)();
                     }
                     break;
                 }
             }
         }
     }
+
     return ret;
 }
