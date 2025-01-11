@@ -1,15 +1,21 @@
 /**
  * \file app.c
  * \brief Entry point of the application.
- * \details
  * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
+
+/***** Includes **************************************************************/
 
 #include "drv_api.h"
 #include "bcgv_api.h"
 #include "mux.h"
-#include "log.h"
 #include "bgf.h"
+#include "comodo.h"
+#include "log.h"
+#include "fsm_lights.h"
+#include "fsm_indicators.h"
+
+/***** Main function *********************************************************/
 
 int main(void)
 {
@@ -37,29 +43,35 @@ int main(void)
 
     /***** Main loop *****/
 
+    (void)success;
     while (quit == false)
     {
-        /* Receive and decode frame from MUX */
+        /* Receive and decode MUX frame (UDP) */
         success = mux_read_frame_100ms(driver_fd);
-        if (success == false)
-        {
-            continue; /* Behaviour to define: should we exit ? continue to next frame forever */
-        }
         mux_check_frame_number();
         success = mux_decode_frame_100ms();
-        if (success == false)
-        {
-            continue;
-        }
 
-        /* TODO: other implementations */
-        success = bgf_read_serial_message(driver_fd);
-        log_warn("success of bgf read : %d", success);
-        if (success == false)
-        {
-            log_error("Error bgf : in bgf_read_serial_message", NULL);
-            continue;
-        }
+        /* Receive serial frames */
+        ret = bgf_read_frames(driver_fd);
+        success = comodo_read_frame_500ms(driver_fd);
+
+        /* Decode COMODO frame (serial) */
+        success = comodo_decode_frame();
+
+        /* FSM executions */
+        ret = fsm_lights_run();
+        ret = fsm_indicators_run();
+        /* TODO: Add fsm windshield wiper washer */
+
+        /* Encode and send MUX frame (UDP) */
+        mux_encode_frame_200ms();
+        success = mux_write_frame_200ms(driver_fd);
+
+        /* Encode and write serial frames */
+        ret = bgf_write_frames(driver_fd);
+
+        /* Prepare next MUX frame number check */
+        mux_incr_frame_number();
     }
 
     /***** Closing application *****/

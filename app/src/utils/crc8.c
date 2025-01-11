@@ -1,12 +1,15 @@
 /**
  * \file crc8.c
  * \brief Implementation of CRC-8 checksum computation using a lookup table.
- * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
+ * \author Raphael CAUSSE
  */
 
-#include "crc8.h"
+/***** Includes **************************************************************/
 
-#define XOR ^
+#include "crc8.h"
+#include "bit_utils.h"
+
+/***** Static Variables ******************************************************/
 
 /*
 Precomputed lookup table for CRC-8 calculation.
@@ -46,6 +49,8 @@ static const uint8_t crc8_lookup_table[256] = {
     0x78, 0x49, 0x1A, 0x2B, 0xBC, 0x8D, 0xDE, 0xEF,
     0x82, 0xB3, 0xE0, 0xD1, 0x46, 0x77, 0x24, 0x15,
     0x3B, 0x0A, 0x59, 0x68, 0xFF, 0xCE, 0x9D, 0xAC};
+
+/***** Functions *************************************************************/
 
 uint8_t crc8_compute(const uint8_t *data, size_t length)
 {

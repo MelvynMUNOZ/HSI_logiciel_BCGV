@@ -1,11 +1,16 @@
 /**
  * \file log.h
- * \brief Logging functions.
+ * \brief Implementation of logging module.
  * \author Raphael CAUSSE
  */
 
+/***** Includes **************************************************************/
+
 #include <stdarg.h>
+#include <time.h>
 #include "log.h"
+
+/***** Functions *************************************************************/
 
 void log_write(const char *level, const char *func, int line, const char *fmt, ...)
 {

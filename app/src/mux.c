@@ -1,42 +1,52 @@
 /**
  * \file mux.c
- * \brief
- * \details
- * \author Raphael CAUSSE - Melvyn MUNOZ - Rol& Cedric TAYO
+ * \brief Implementation of MUX system.
+ * \details Read UDP frames from driver, write UDP frames to driver, decode and encode MUX frames.
+ * \author Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
  */
 
-#include "bcgv_api.h"
+/***** Includes **************************************************************/
+
 #include "mux.h"
 #include "crc8.h"
 #include "log.h"
 #include "bit_utils.h"
 
+/***** Definitions ***********************************************************/
+
 #define FUEL_LEVEL_5_PERCENT (FUEL_LEVEL_MAX * 5 / 100)
 
-#define MUX_100MS_GET_UINT32_AT(index) ((mux_frame_100ms[index] << 24) |     \
-                                        (mux_frame_100ms[index + 1] << 16) | \
-                                        (mux_frame_100ms[index + 2] << 8) |  \
-                                        mux_frame_100ms[index + 3])
+/***** Macros ****************************************************************/
 
-#define MUX_200MS_SET_UINT32_AT(index, value)              \
-    do                                                     \
-    {                                                      \
-        mux_frame_200ms[index] = (value >> 24) & 0xFF;     \
-        mux_frame_200ms[index + 1] = (value >> 16) & 0xFF; \
-        mux_frame_200ms[index + 2] = (value >> 8) & 0xFF;  \
-        mux_frame_200ms[index + 3] = value & 0xFF;         \
+#define MUX_100MS_GET_UINT32_AT(idx) ((mux_frame_100ms[idx] << 24) |     \
+                                      (mux_frame_100ms[idx + 1] << 16) | \
+                                      (mux_frame_100ms[idx + 2] << 8) |  \
+                                      mux_frame_100ms[idx + 3])
+
+#define MUX_200MS_SET_UINT32_AT(idx, val)              \
+    do                                                 \
+    {                                                  \
+        mux_frame_200ms[idx] = (val >> 24) & 0xFF;     \
+        mux_frame_200ms[idx + 1] = (val >> 16) & 0xFF; \
+        mux_frame_200ms[idx + 2] = (val >> 8) & 0xFF;  \
+        mux_frame_200ms[idx + 3] = val & 0xFF;         \
     } while (0)
 
-#define MUX_200MS_SET_UINT16_AT(index, value)         \
-    do                                                \
-    {                                                 \
-        mux_frame_200ms[index] = (value >> 8) & 0xFF; \
-        mux_frame_200ms[index + 1] = value & 0xFF;    \
+#define MUX_200MS_SET_UINT16_AT(idx, val)         \
+    do                                            \
+    {                                             \
+        mux_frame_200ms[idx] = (val >> 8) & 0xFF; \
+        mux_frame_200ms[idx + 1] = val & 0xFF;    \
     } while (0)
 
-/* Internal variables */
+/***** Static Variables ******************************************************/
+
 static uint8_t mux_frame_100ms[DRV_UDP_100MS_FRAME_SIZE] = {0};
 static uint8_t mux_frame_200ms[DRV_UDP_200MS_FRAME_SIZE] = {0};
+
+static frame_number_t expected_frame_number = FRAME_NUMBER_MIN;
+
+/***** Functions *************************************************************/
 
 bool mux_read_frame_100ms(int32_t drv_fd)
 {
@@ -45,6 +55,12 @@ bool mux_read_frame_100ms(int32_t drv_fd)
     {
         log_error("error while reading from MUX 100ms frame", NULL);
     }
+
+#ifdef DEBUG
+    printf("\n===================== MUX READ =====================\n");
+    mux_print_raw(mux_frame_100ms, DRV_UDP_100MS_FRAME_SIZE);
+    printf("====================================================\n");
+#endif
 
     return (ret == DRV_SUCCESS);
 }
@@ -60,24 +76,25 @@ bool mux_write_frame_200ms(int32_t drv_fd)
     return (ret == DRV_SUCCESS);
 }
 
-void mux_check_frame_number()
+void mux_check_frame_number(void)
 {
     frame_number_t frame_number = mux_frame_100ms[0];
-    frame_number_t expected_frame_number = get_frame_number();
 
     if (frame_number != expected_frame_number)
     {
         log_warn("frame number mismatch: %u (expected %u)", frame_number, expected_frame_number);
     }
-
-    /* Increment for next frame check */
-    expected_frame_number = (expected_frame_number % 100) + 1;
-    set_frame_number(expected_frame_number);
 }
 
-bool mux_decode_frame_100ms()
+void mux_incr_frame_number(void)
+{
+    expected_frame_number = (expected_frame_number % FRAME_NUMBER_MAX) + 1;
+}
+
+bool mux_decode_frame_100ms(void)
 {
     bool ret = false;
+    frame_number_t frame_number = 0;
     distance_t distance = 0;
     speed_t speed = 0;
     issues_t chassis_issues = 0;
@@ -98,7 +115,8 @@ bool mux_decode_frame_100ms()
     }
     else
     {
-        /* Extract from frame */
+        /* Extract data from frame */
+        frame_number = mux_frame_100ms[0];
         distance = MUX_100MS_GET_UINT32_AT(1);
         speed = mux_frame_100ms[5];
         chassis_issues = mux_frame_100ms[6];
@@ -108,6 +126,7 @@ bool mux_decode_frame_100ms()
         battery_issues = mux_frame_100ms[13];
 
         /* Store data in app context */
+        set_frame_number(frame_number);
         set_distance(distance);
         set_speed(speed);
         set_chassis_issues(chassis_issues);
@@ -117,12 +136,11 @@ bool mux_decode_frame_100ms()
         set_battery_issues(battery_issues);
         set_crc8(frame_crc8);
 
-        /* DEBUG */
-        printf("====================");
-        mux_print_raw(mux_frame_100ms, DRV_UDP_100MS_FRAME_SIZE);
+#ifdef DEBUG
+        printf("==================== MUX DECODE ====================\n");
         mux_print_decoded();
-        printf("====================\n");
-        /* END DEBUG*/
+        printf("====================================================\n");
+#endif
 
         ret = true;
     }
@@ -130,7 +148,7 @@ bool mux_decode_frame_100ms()
     return ret;
 }
 
-void mux_encode_frame_200ms()
+void mux_encode_frame_200ms(void)
 {
     uint8_t byte = 0;
     distance_t distance = get_distance();
@@ -158,8 +176,9 @@ void mux_encode_frame_200ms()
     byte |= ((battery_issues & BATTERY_ISSUES_DISCHARGED) ? 1U : 0U);
     mux_frame_200ms[0] = byte;
 
-    /* Set next 8 bits */
     byte = 0; /* Reset */
+
+    /* Set next 8 bits */
     byte |= (flag_indic_hazard & 1U) << 7;
     byte |= ((battery_issues & BATTERY_ISSUES_KO) ? 1U : 0U) << 6;
     byte |= ((motor_issues & MOTOR_ISSUE_TEMPERATURE_LDR) ? 1U : 0U) << 5;
@@ -177,14 +196,16 @@ void mux_encode_frame_200ms()
     engine_rpm /= 10;
     MUX_200MS_SET_UINT16_AT(8, engine_rpm);
 
-    /* DEBUG */
+#ifdef DEBUG
+    printf("==================== MUX ENCODE ====================\n");
     mux_print_raw(mux_frame_200ms, DRV_UDP_200MS_FRAME_SIZE);
-    /* END DEBUG*/
+    printf("====================================================\n");
+#endif
 }
 
-void mux_print_raw(const uint8_t *frame, size_t length)
+void mux_print_raw(const uint8_t *frame, const size_t length)
 {
-    printf("\nMUX [ ");
+    printf("MUX [ ");
     for (size_t i = 0; i < length; i++)
     {
         printf("%02X ", frame[i]);
@@ -264,5 +285,5 @@ void mux_print_decoded(void)
         }
     }
     printf("\n");
-    printf("CRC8: %u\n", crc8);
+    printf("CRC8: %02X\n", crc8);
 }

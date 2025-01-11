@@ -1,204 +1,219 @@
 /**
- * \file        bgf.c
- * \author      Melvyn MUNOZ
- * \date        2025-01-06
- * \brief       This is the code to encode the message that BCGV send do BGF
- * 				and check the message return by bgf to set the ack for finite state machine.
+ * \file bgf.c
+ * \brief Implementation of BGF system.
+ * \details Read and write serial frames of BGF from driver.
+ * \author Melvyn MUNOZ
  */
 
-#include <stdbool.h>
-#include <stdio.h>
+/***** Includes **************************************************************/
 
-#include "drv_api.h"
-#include "bcgv_api.h"
-#include "bit_utils.h"
 #include "bgf.h"
+#include "serial.h"
+#include "bit_utils.h"
 #include "log.h"
 
-#define SERIAL_NUMBER_BGF (10) // numero de serie 11 - 1
-#define SIZE_MSG_TO_WRITE (5)
+/***** Definitions ***********************************************************/
 
-// Saved message send by bcgv to bgf during the last frame
-static uint8_t bgf_msg_saved[5][2];
+#define BGF_SERIAL_CHANNEL (11 - 1) /* Serial channel 11 */
+#define BGF_SERIAL_FRAME_SIZE (2)	/* bytes */
+#define BGF_NUM_MSG (5)
 
+typedef struct
+{
+	uint8_t id;
+	uint8_t flag;
+} bgf_msg_t;
+
+/***** Static variables ******************************************************/
+
+/* Last saved messages sent by BCGV to BGF and last saved flags */
+static bgf_msg_t bgf_msg[BGF_NUM_MSG];
 static flag_t flag_position_light_saved = false;
 static flag_t flag_crossing_light_saved = false;
 static flag_t flag_highbeam_light_saved = false;
 static flag_t flag_indic_right_saved = false;
 static flag_t flag_indic_left_saved = false;
 
+/***** Functions *************************************************************/
+
 /**
- * \brief Check if the message received is the same at the message sended
- *
- * \param id : Message ID
- * \param flag : Flag value of the equipement
- * \return boolean : the data in the received message are the same in the sended message
+ * \brief Check if the message received is same as last message sent.
+ * \param msg_received : BGF message received
+ * \return bool : the data in the received message are the same in the sended message
  */
-bool bgf_check_msg_received(uint8_t id, uint8_t flag)
+bool bgf_check_msg_received(const bgf_msg_t *msg_received)
 {
-	if (bgf_msg_saved[id][0] == id && bgf_msg_saved[id][1] == flag)
+	bool same_msg = false;
+
+	if (msg_received->id > BGF_NUM_MSG)
 	{
-		return true;
+		log_error("invalid message id (%u)", msg_received->id);
 	}
-	return false;
+	else if ((bgf_msg[msg_received->id - 1].id == msg_received->id) &&
+			 (bgf_msg[msg_received->id - 1].flag == msg_received->flag))
+	{
+		same_msg = true;
+	}
+
+	return same_msg;
 }
 
 /**
- * \brief Set modifications in the ack bit
- *
- * \param id : Message ID
- * \param flag : Flag value of the equipement
+ * \brief Set acknowledgement bit according to received message.
+ * \param msg : BGF message
  */
-void bgf_set_bit_ack(uint8_t id, uint8_t flag)
+void bgf_set_bit_ack(const bgf_msg_t *msg)
 {
-	bit_flag_t bit_flag = 1;
 	bit_flag_t bit_flag_actual = get_bit_flag_bgf_ack();
-	bit_flag = bit_flag << (id - 1);
-	if ((flag & 0x01) == 1)
+	bit_flag_t bit_ack = 1;
+
+	bit_ack = bit_ack << (msg->id - 1);
+	if (msg->flag == 1)
 	{
-		set_bit_flag_bgf_ack(bit_flag_actual | bit_flag);
+		set_bit_flag_bgf_ack(bit_flag_actual | bit_ack);
 	}
 	else
 	{
-		set_bit_flag_bgf_ack(CLEAR_BIT(bit_flag_actual, bit_flag));
+		set_bit_flag_bgf_ack(CLEAR_BIT(bit_flag_actual, bit_ack));
 	}
 }
 
 /**
- * \brief Read the serial data of the driver, set the bit ack if there are differents values
- *
- * \param drvFd : Fd driver
- * \return boolean : the execution of the function is correct
+ * \brief Set serial write buffer with the BGF message to send
+ * \param msg_to_send : BGF message to_send
  */
-bool bgf_read_serial_message(int32_t drvFd)
+void bgf_set_buffer_write(const bgf_msg_t *msg_to_send)
 {
-	serial_frame_t serialData[DRV_MAX_FRAMES];
-	uint32_t serialDataLen = 0;
-	int32_t ret = drv_read_ser(drvFd, serialData, &serialDataLen);
-
-	if (ret == DRV_ERROR)
-	{
-		log_error("Error driver : serial reading problem", NULL);
-		return false;
-	}
-
-	if (serialDataLen > 0 && serialData[SERIAL_NUMBER_BGF].frameSize == SER_MAX_FRAME_SIZE)
-	{
-		uint8_t id_msg = serialData[SERIAL_NUMBER_BGF].frame[0];
-		uint8_t flag_msg = serialData[SERIAL_NUMBER_BGF].frame[1];
-		log_info("Id message : %d", id_msg);
-		log_info("Flag message : %d", flag_msg);
-		bool check_ack = bgf_check_msg_received(id_msg, flag_msg);
-		if (check_ack == true)
-		{
-			bgf_set_bit_ack(id_msg, flag_msg);
-			log_info("Bit set", NULL);
-		}
-	}
-	return true;
+	serial_buffer_write[BGF_SERIAL_CHANNEL].serNum = BGF_SERIAL_CHANNEL + 1;
+	serial_buffer_write[BGF_SERIAL_CHANNEL].frameSize = BGF_SERIAL_FRAME_SIZE;
+	serial_buffer_write[BGF_SERIAL_CHANNEL].frame[0] = msg_to_send->id;
+	serial_buffer_write[BGF_SERIAL_CHANNEL].frame[1] = msg_to_send->flag;
 }
 
 /**
- * \brief Set all data of one bcgv message to send it to bgf
- *
- * \param serialData_write : Serial data to write
- * \param id : Message id
- * \param flag_new : New flag to set
+ * \brief Write one serial message to driver.
+ * \param drv_fd : Fd driver
+ * \param msg_id : Message id to set and send
+ * \param msg_flag : Message flag to set and send
+ * \return bool : true if successfully write to driver, false otherwise
  */
-void bgf_set_one_data(serial_frame_t *serialData_write, uint8_t id, uint8_t flag_new)
-{
-	serialData_write[11].serNum = 11;
-	serialData_write[11].frameSize = 2;
-	serialData_write[11].frame[0] = id;
-	serialData_write[11].frame[1] = flag_new;
-}
-
-/**
- * \brief Write one message on the driver to send to bgf
- *
- * \param drvFd : Fd driver
- * \param serialdatalen : Number of element in serialData structure
- * \param serialData_write : Data to write of serial data
- * \param id : Message id
- * \param flag_new : New flag to set
- * \return boolean : the execution of the function is correct
- */
-bool bgf_write_one_data(int32_t drvFd, uint32_t serialdatalen, serial_frame_t *serialData_write, uint8_t id, uint8_t flag_new)
+bool bgf_write_msg(int32_t drv_fd, uint8_t msg_id, uint8_t msg_flag)
 {
 	int32_t ret = 0;
-	bgf_set_one_data(serialData_write, id, flag_new);
-	ret = drv_write_ser(drvFd, serialData_write, serialdatalen);
-	if (ret == DRV_ERROR)
+
+	if (msg_id > BGF_NUM_MSG)
 	{
-		log_error("Error during the writing of bcgv message to bgf", NULL);
+		log_error("invalid BGF message id (%u)", msg_id);
 		return false;
 	}
+
+	bgf_msg[msg_id - 1].id = msg_id;
+	bgf_msg[msg_id - 1].id = msg_flag;
+
+	bgf_set_buffer_write(&bgf_msg[msg_id - 1]);
+	ret = drv_write_ser(drv_fd, serial_buffer_write, 1);
+	if (ret == DRV_ERROR)
+	{
+		log_error("error while writing BGF_%u message to driver", msg_id);
+		return false;
+	}
+
 	return true;
 }
 
-/**
- * \brief Check if a flag is different that the precedent flag, in this case, write a message to bgf
- *
- * \param drvFd : Fd driver
- * \return boolean : the execution of the function is correct
- */
-bool bgf_write_serial_message(int32_t drvFd)
+int32_t bgf_read_frames(int32_t drv_fd)
 {
-	// initalize the serialData
-	serial_frame_t serialData_write[DRV_MAX_FRAMES];
-	uint32_t serialdatalen = 1;
-	bool success = 0;
+	int32_t ret = 0;
+	int32_t count = 0;
+	uint32_t serial_data_len = 0;
+	bgf_msg_t msg_received;
+	bool same_msg = false;
 
+	ret = drv_read_ser(drv_fd, serial_buffer_read, &serial_data_len);
+	if (ret == DRV_ERROR)
+	{
+		log_error("error while reading from driver", NULL);
+		return DRV_ERROR;
+	}
+
+	/* Try to pull all available BGF messages */
+	while ((serial_data_len > 0) && (serial_buffer_read[BGF_SERIAL_CHANNEL].frameSize == BGF_SERIAL_FRAME_SIZE))
+	{
+		count++;
+		msg_received.id = serial_buffer_read[BGF_SERIAL_CHANNEL].frame[0];
+		msg_received.flag = serial_buffer_read[BGF_SERIAL_CHANNEL].frame[1];
+
+		/* Check for acknowledgement */
+		same_msg = bgf_check_msg_received(&msg_received);
+		if (same_msg == true)
+		{
+			bgf_set_bit_ack(&msg_received);
+			log_info("Bit set", NULL);
+		}
+
+		/* Continue reading next available message */
+		ret = drv_read_ser(drv_fd, serial_buffer_read, &serial_data_len);
+		if (ret == DRV_ERROR)
+		{
+			log_error("error while reading from driver", NULL);
+			return DRV_ERROR;
+		}
+	}
+
+	return count;
+}
+
+int32_t bgf_write_frames(int32_t drv_fd)
+{
+	bool success = false;
+	int32_t errors = 0;
 	flag_t flag_position_light_new = get_flag_position_light();
 	flag_t flag_crossing_light_new = get_flag_crossing_light();
 	flag_t flag_highbeam_light_new = get_flag_highbeam_light();
 	flag_t flag_indic_right_new = get_flag_indic_right();
 	flag_t flag_indic_left_new = get_flag_indic_left();
 
-	// Check flags, if they are different, we write in serialData_write
+	/* Send serial message only if flags are different */
 	if (flag_position_light_new != flag_position_light_saved)
 	{
-		success = bgf_write_one_data(drvFd, serialdatalen, serialData_write, 1, flag_position_light_new);
+		success = bgf_write_msg(drv_fd, BCGV_BGF_MSG_ID_1, flag_position_light_new);
 		if (success == false)
 		{
-			return false;
+			errors++;
 		}
 	}
-
 	if (flag_crossing_light_new != flag_crossing_light_saved)
 	{
-		success = bgf_write_one_data(drvFd, serialdatalen, serialData_write, 2, flag_crossing_light_new);
+		success = bgf_write_msg(drv_fd, BCGV_BGF_MSG_ID_2, flag_crossing_light_new);
 		if (success == false)
 		{
-			return false;
+			errors++;
 		}
 	}
-
 	if (flag_highbeam_light_new != flag_highbeam_light_saved)
 	{
-		success = bgf_write_one_data(drvFd, serialdatalen, serialData_write, 3, flag_highbeam_light_new);
+		success = bgf_write_msg(drv_fd, BCGV_BGF_MSG_ID_3, flag_highbeam_light_new);
 		if (success == false)
 		{
-			return false;
+			errors++;
 		}
 	}
-
 	if (flag_indic_right_new != flag_indic_right_saved)
 	{
-		success = bgf_write_one_data(drvFd, serialdatalen, serialData_write, 4, flag_indic_right_new);
+		success = bgf_write_msg(drv_fd, BCGV_BGF_MSG_ID_4, flag_indic_right_new);
 		if (success == false)
 		{
-			return false;
+			errors++;
+		}
+	}
+	if (flag_indic_left_new != flag_indic_left_saved)
+	{
+		success = bgf_write_msg(drv_fd, BCGV_BGF_MSG_ID_5, flag_indic_left_new);
+		if (success == false)
+		{
+			errors++;
 		}
 	}
 
-	if (flag_indic_left_new != flag_indic_left_saved)
-	{
-		success = bgf_write_one_data(drvFd, serialdatalen, serialData_write, 5, flag_indic_left_new);
-		if (success == false)
-		{
-			return false;
-		}
-	}
-	return true;
+	return errors;
 }

@@ -4,17 +4,19 @@
 EXECUTABLE_NAME := app
 
 # Define build mode (debug or release)
-BUILD_MODE := release
+BUILD_MODE := debug
 
 # Define source files to compile
 SOURCES := \
 	app.c \
-	crc8.c \
-	log.c \
-	mux.c \
 	bgf.c \
+	comodo.c \
+	mux.c \
+	serial.c \
 	fsm/fsm_indicators.c \
-	fsm/fsm_lights.c
+	fsm/fsm_lights.c \
+	utils/crc8.c \
+	utils/log.c
 
 
 #==============================================================================
@@ -50,7 +52,7 @@ CSTD := -std=c99
 CFLAGS := $(CSTD) -W -Wall -Wextra -pedantic
 
 ### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
-CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include -I./src -I./src/fsm
+CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include -I$(DIR_SRC) -I$(DIR_SRC)fsm -I$(DIR_SRC)utils
 
 ### Extra flags to give to compiler when it invokes the linker (e.g. -L ...)
 LDFLAGS := -L../driver/lib -L./lib/bcgv_api/bin
@@ -59,7 +61,7 @@ LDFLAGS := -L../driver/lib -L./lib/bcgv_api/bin
 LDLIBS := -l:drv_api.a -l:bcgv_api.a
 
 ### Build mode specific flags
-DEBUG_FLAGS   := -O0 -g3
+DEBUG_FLAGS   := -O0 -g3 -DDEBUG
 RELEASE_FLAGS := -O2 -g0
 
 
