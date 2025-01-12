@@ -2,17 +2,18 @@
  * \file        fsm_windshield_washer.c
  * \brief       Finite State Machine for windshield washer and wiper control
  * \details     Implementation of the FSM controlling wipers and washer states
- * \author      Raphael CAUSSE - Melvyn MUNOZ - Roland Cedric TAYO
+ * \author      Roland Cedric TAYO
  */
 
-#include <stdlib.h>
-#include "bcgv_api.h"
+/***** Includes **************************************************************/
+
+#include "fsm_common.h"
 #include "fsm_windshield_washer.h"
-#include "bit_utils.h"
+
+/***** Definitions ***********************************************************/
 
 #define TIMER_2S_COUNT_100MS (20) /* 2 seconds = 20 * 100ms */
-#define ON (true)
-#define OFF (false)
+#define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
 
 /* States */
 typedef enum
@@ -39,53 +40,6 @@ typedef enum
     EV_ERR = 255       /* Error event */
 } fsm_event_t;
 
-/* Static variables */
-static fsm_state_t state = ST_INIT;
-static uint8_t timer_counter = 0;
-
-/* Callback functions */
-static int callback_init(void)
-{
-    set_flag_wiper(OFF);
-    set_flag_washer(OFF);
-    timer_counter = 0;
-    return 0;
-}
-
-static int callback_wiper_on(void)
-{
-    set_flag_wiper(ON);
-    return 0;
-}
-
-static int callback_all_off(void)
-{
-    set_flag_wiper(OFF);
-    set_flag_washer(OFF);
-    timer_counter = 0;
-    return 0;
-}
-
-static int callback_both_on(void)
-{
-    set_flag_wiper(ON);
-    set_flag_washer(ON);
-    return 0;
-}
-
-static int callback_timer_tick(void)
-{
-    timer_counter++;
-    return 0;
-}
-
-static int callback_error(void)
-{
-    set_flag_wiper(OFF);
-    set_flag_washer(OFF);
-    return -1;
-}
-
 /* Transition structure */
 typedef struct
 {
@@ -95,79 +49,135 @@ typedef struct
     fsm_state_t next_state;
 } transition_t;
 
-/* Transition table */
-static transition_t trans[] = {
-    /* Initial transition */
-    {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
+/***** Static Functions Declarations *****************************************/
 
-    /* Transitions from ALL_OFF */
+static int callback_init(void);
+static int callback_wiper_on(void);
+static int callback_both_on(void);
+static int callback_timer_tick(void);
+static int callback_error(void);
+static fsm_event_t get_next_event(fsm_state_t current_state);
+
+/***** Static Variables ******************************************************/
+
+/* Static variables */
+static fsm_state_t state = ST_INIT;
+static uint8_t timer_counter = 0;
+
+static transition_t trans[] = {
+    {ST_INIT, EV_NONE, &callback_init, ST_ALL_OFF},
     {ST_ALL_OFF, EV_CMD_WIPER_ON, &callback_wiper_on, ST_WIPER_ON},
     {ST_ALL_OFF, EV_CMD_WASHER_ON, &callback_both_on, ST_BOTH_ON},
-
-    /* Transitions from WIPER_ON */
-    {ST_WIPER_ON, EV_CMD_WIPER_OFF, &callback_all_off, ST_ALL_OFF},
+    {ST_WIPER_ON, EV_CMD_WIPER_OFF, &callback_init, ST_ALL_OFF},
     {ST_WIPER_ON, EV_CMD_WASHER_ON, &callback_both_on, ST_BOTH_ON},
-
-    /* Transitions from BOTH_ON */
-    {ST_BOTH_ON, EV_CMD_WASHER_OFF, &callback_wiper_on, ST_WIPER_TIMER},
-
-    /* Transitions from WIPER_TIMER */
+    {ST_BOTH_ON, EV_CMD_WASHER_OFF, NULL, ST_WIPER_TIMER},
     {ST_WIPER_TIMER, EV_CMD_WASHER_ON, &callback_both_on, ST_BOTH_ON},
-    {ST_WIPER_TIMER, EV_TIMEOUT, &callback_all_off, ST_ALL_OFF},
+    {ST_WIPER_TIMER, EV_TIMEOUT, &callback_init, ST_ALL_OFF},
     {ST_WIPER_TIMER, EV_NONE, &callback_timer_tick, ST_WIPER_TIMER},
+    {ST_ANY, EV_ERR, &callback_error, ST_TERM},
+};
 
-    /* Error handling */
-    {ST_ANY, EV_ERR, &callback_error, ST_TERM}};
-
-#define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
+/***** Static Functions Definitions ******************************************/
 
 /**
- * \brief Get the next event for the FSM
- *
- * \param current_state Current state of the FSM
- * \return fsm_event_t Next event to process
+ * \brief Initialise all light flags to OFF.
+ * \return int : Negative value for error code.
+ */
+static int callback_init(void)
+{
+    set_flag_wiper(OFF);
+    set_flag_washer(OFF);
+    timer_counter = 0;
+    return 0;
+}
+
+/**
+ * \brief Set the flags of wiper to ON.
+ * \return int : Negative value for error code.
+ */
+static int callback_wiper_on(void)
+{
+    set_flag_wiper(ON);
+    return 0;
+}
+
+/**
+ * \brief Set all flags to ON.
+ * \return int : Negative value for error code.
+ */
+static int callback_both_on(void)
+{
+    set_flag_wiper(ON);
+    set_flag_washer(ON);
+    return 0;
+}
+
+/**
+ * \brief Callback for waiting OFF command input or the timer exceeds 2 seconds.
+ * \return int : Negative value for error code.
+ */
+static int callback_timer_tick(void)
+{
+    timer_counter++;
+    return 0;
+}
+
+/**
+ * \brief Set all flags to OFF.
+ * \return int : Negative value for error code.
+ */
+static int callback_error(void)
+{
+    set_flag_wiper(OFF);
+    set_flag_washer(OFF);
+    return -1;
+}
+
+/**
+ * \brief Get the next event for the FSM.
+ * \param current_state Current FSM state.
+ * \return fsm_event_t Next event value.
  */
 static fsm_event_t get_next_event(fsm_state_t current_state)
 {
     fsm_event_t event = EV_NONE;
 
-    /* Get current commands */
-    cmd_t cmd_wiper = get_cmd_wiper();
-    cmd_t cmd_washer = get_cmd_washer();
+    bool wiper_ON = (get_cmd_wiper() == ON);
+    bool washer_ON = (get_cmd_washer() == ON);
 
     switch (current_state)
     {
     case ST_ALL_OFF:
-        if (cmd_wiper == ON)
+        if (wiper_ON)
         {
             event = EV_CMD_WIPER_ON;
         }
-        else if (cmd_washer == ON)
+        else if (washer_ON)
         {
             event = EV_CMD_WASHER_ON;
         }
         break;
 
     case ST_WIPER_ON:
-        if (cmd_wiper == OFF)
+        if (!wiper_ON)
         {
             event = EV_CMD_WIPER_OFF;
         }
-        else if (cmd_washer == ON)
+        else if (washer_ON)
         {
             event = EV_CMD_WASHER_ON;
         }
         break;
 
     case ST_BOTH_ON:
-        if (cmd_washer == OFF)
+        if (!washer_ON)
         {
             event = EV_CMD_WASHER_OFF;
         }
         break;
 
     case ST_WIPER_TIMER:
-        if (cmd_washer == ON)
+        if (washer_ON && timer_counter < TIMER_2S_COUNT_100MS)
         {
             event = EV_CMD_WASHER_ON;
         }
@@ -187,6 +197,8 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
 
     return event;
 }
+
+/***** Functions *************************************************************/
 
 int fsm_windshield_washer_run(void)
 {
