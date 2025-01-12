@@ -1,23 +1,13 @@
 #==============================================================================
 
 # Define executable name
-EXECUTABLE_NAME := app
+EXECUTABLE_NAME := bcgv_api
 
 # Define build mode (debug or release)
 BUILD_MODE := release
 
 # Define source files to compile
-SOURCES := \
-	app.c \
-	bgf.c \
-	comodo.c \
-	mux.c \
-	serial.c \
-	fsm/fsm_indicators.c \
-	fsm/fsm_lights.c \
-	fsm/fsm_windshield.c \
-	utils/crc8.c \
-	utils/log.c
+SOURCES := bcgv_api.c
 
 
 #==============================================================================
@@ -25,18 +15,18 @@ SOURCES := \
 #==============================================================================
 
 ### Predefined directories
-DIR_BIN   := bin/
 DIR_BUILD := build/
-DIR_SRC   := src/
+DIR_SRC := src/
+DIR_LIB := bin/
 
 ### Target
-TARGET := $(DIR_BIN)$(EXECUTABLE_NAME)
+TARGET := $(DIR_LIB)$(EXECUTABLE_NAME).a
 
 ### Source files
-SOURCE_FILES := $(filter-out \,$(addprefix $(DIR_SRC),$(SOURCES)))
+SOURCE_FILES := $(strip $(filter-out \, $(addprefix $(DIR_SRC), $(SOURCES))))
 
-### Object files
-OBJECT_FILES := $(subst $(DIR_SRC),$(DIR_BUILD),$(addsuffix .o,$(basename $(SOURCE_FILES))))
+### Object file 
+OBJECT_FILES := $(strip $(subst $(DIR_SRC), $(DIR_BUILD), $(addsuffix .o, $(basename $(SOURCE_FILES)))))
 
 
 #==============================================================================
@@ -50,20 +40,20 @@ CC := gcc
 CSTD := -std=c99
 
 ### Extra flags to give to the C compiler
-CFLAGS := $(CSTD) -W -Wall -Wextra -pedantic
+CFLAGS := $(CSTD) -W -Wall -pedantic
 
 ### Extra flags to give to the C preprocessor (e.g. -I, -D, -U ...)
-CPPFLAGS := -I../driver/include -I./lib/bcgv_api/include -I$(DIR_SRC) -I$(DIR_SRC)fsm -I$(DIR_SRC)utils
-
-### Extra flags to give to compiler when it invokes the linker (e.g. -L ...)
-LDFLAGS := -L../driver/lib -L./lib/bcgv_api/bin
-
-### Library names given to compiler when it invokes the linker (e.g. -l ...)
-LDLIBS := -l:drv_api.a -l:bcgv_api.a
+CPPFLAGS := -I./include
 
 ### Build mode specific flags
-DEBUG_FLAGS   := -O0 -g3 -DDEBUG
+DEBUG_FLAGS   := -O0 -g3
 RELEASE_FLAGS := -O2 -g0
+
+### Library static
+AR := ar
+
+### Library compiler function
+RCS := rcs
 
 
 #==============================================================================
@@ -82,12 +72,12 @@ RMDIR := rm -rf
 
 default: build
 
-### Verbosity
+###Verbosity
 VERBOSE := $(or $(v), $(verbose))
 ifeq ($(VERBOSE),)
-    Q := @
+	Q := @
 else
-    Q :=
+	Q := 
 endif
 
 #-------------------------------------------------
@@ -95,7 +85,7 @@ endif
 #-------------------------------------------------
 .PHONY: __checkdirs
 __checkdirs:
-	$(if $(wildcard $(DIR_BIN)),,$(shell $(MKDIR) $(DIR_BIN)))
+	$(if $(wildcard $(DIR_LIB)),,$(shell $(MKDIR) $(DIR_LIB)))
 	$(if $(wildcard $(DIR_BUILD)),,$(shell $(MKDIR) $(DIR_BUILD)))
 
 #-------------------------------------------------
@@ -106,7 +96,7 @@ __prebuild: __checkdirs
 ifeq ($(EXECUTABLE_NAME),)
 	$(error EXECUTABLE_NAME is required. Must provide an executable name)
 endif
-ifeq ($(filter $(BUILD_MODE),debug release),)
+ifeq ($(filter $(BUILD_MODE), debug release),)
 	$(error BUILD_MODE is invalid. Must provide a valid mode (debug or release))
 endif
 ifeq ($(SOURCES),)
@@ -119,35 +109,34 @@ else ifeq ($(BUILD_MODE),release)
 	$(eval CFLAGS += $(RELEASE_FLAGS))
 endif
 
-	@echo "Build $(TARGET) ($(BUILD_MODE))"
+	@echo 'Build $(TARGET) ($(BUILD_MODE))'
 
 #-------------------------------------------------
 # Build operations
 #-------------------------------------------------
 .PHONY: build
 build: __prebuild $(TARGET)
-	@echo "Build done"
+	@echo 'Build done'
 
 #-------------------------------------------------
 # Rebuild operations
 #-------------------------------------------------
 .PHONY: rebuild
 rebuild: clean build
-	
-#-------------------------------------------------
-# Link object files into target target
-#-------------------------------------------------
-$(TARGET): $(OBJECT_FILES)
-	@echo "LD    $@"
-	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 #-------------------------------------------------
 # Compile C source files
 #-------------------------------------------------
 $(DIR_BUILD)%.o: $(DIR_SRC)%.c
-	@echo "CC    $@"
-	@$(MKDIR) $(dir $@)
-	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@ 
+	@echo 'CC    $@'
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+#----------------------------------------------------
+# Compile object files to build the static library
+#----------------------------------------------------
+$(TARGET): $(OBJECT_FILES)
+	@echo 'AR    $@'
+	$(Q)$(AR) $(RCS) $@ $^
 
 #-------------------------------------------------
 # Clean generated files
@@ -171,9 +160,9 @@ endif
 .PHONY: cleanall
 cleanall:
 	@echo "Clean entire project"
-ifneq ($(wildcard $(DIR_BIN)),)
-	@echo "RM    $(DIR_BIN)"
-	@$(RMDIR) $(DIR_BIN)
+ifneq ($(wildcard $(DIR_LIB)),)
+	@echo "RM    $(DIR_LIB)"
+	@$(RMDIR) $(DIR_LIB)
 endif
 ifneq ($(wildcard $(DIR_BUILD)),)
 	@echo "RM    $(DIR_BUILD)"
@@ -186,13 +175,11 @@ endif
 #-------------------------------------------------
 .PHONY: info
 info:
-	@echo "Build configurations"
-	@echo "-- CC: $(CC)"
-	@echo "-- CFLAGS: $(CFLAGS)"
-	@echo "-- CPPFLAGS: $(CPPFLAGS)"
-	@echo "-- LDFLAGS: $(LDFLAGS)"
-	@echo "-- LDLIBS: $(LDLIBS)"
-	@echo "Files"
-	@echo "-- TARGET: $(TARGET)"
-	@echo "-- SOURCE_FILES: $(SOURCE_FILES)"
-	@echo "-- OBJECT_FILES: $(OBJECT_FILES)"
+	@echo 'Build configurations'
+	@echo '-- CC: $(CC)'
+	@echo '-- CFLAGS: $(CFLAGS)'
+	@echo 'Files'
+	@echo '-- TARGET: $(TARGET)'
+	@echo 'SOURCES: $(SOURCES)'
+	@echo '-- SOURCE_FILES: $(SOURCE_FILES)'
+	@echo '-- OBJECT_FILES: $(OBJECT_FILES)'

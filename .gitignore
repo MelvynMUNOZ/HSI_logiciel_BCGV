@@ -15,3 +15,6 @@
 # Directories
 *build/
 app/bin/
+
+# Python virtual environment
+*.venv/
