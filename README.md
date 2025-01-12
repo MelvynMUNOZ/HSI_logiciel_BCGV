@@ -14,8 +14,61 @@ problèmes moteurs, le kilométrage, le niveau du réservoir, ou la charge batte
 
 # TABLE DES MATIERES
 
+* [Compilation](#compilation)
+* [Utilisation](#utilisation)
 * [Explications](#explications)
 * [Difficultés](#difficultes)
+
+
+# COMPILATION
+
+Compilation complète (librairie statique + application)
+```
+make
+```
+
+Compiler la librairie statique
+```
+make lib
+```
+
+Compiler l'application
+```
+make app
+```
+
+Nettoyer le projet
+```
+make clean
+```
+
+Nettoyer l'application
+```
+make cleanapp
+```
+
+Nettoyer la librarie statique
+```
+make cleanlib
+```
+
+
+# UTILISATION
+
+Pour utiliser le docker de test, se réferrer au fichier `docker/readme.md`.
+
+Lancer le docker de test
+```
+cd docker
+sudo docker-compose up
+```
+
+Lancer le driver et l'application
+```
+chmod +x run.sh
+./run.sh
+```
+
 
 # EXPLICATIONS
 
