@@ -1,6 +1,6 @@
 /**
  * \file fsm_lights.c
- * \brief Interface for finite state machine for lights (position, crossing, highbeam).
+ * \brief Interface for finite state machine for lights (position, crossing, highbeam) control.
  * \details Handle states, events and transitions for the FSM.
  * \author Melvyn MUNOZ
  */

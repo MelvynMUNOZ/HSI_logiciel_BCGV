@@ -4,7 +4,7 @@
 EXECUTABLE_NAME := app
 
 # Define build mode (debug or release)
-BUILD_MODE := debug
+BUILD_MODE := release
 
 # Define source files to compile
 SOURCES := \
@@ -15,7 +15,7 @@ SOURCES := \
 	serial.c \
 	fsm/fsm_indicators.c \
 	fsm/fsm_lights.c \
-	fsm/fsm_windshield_washer.c \
+	fsm/fsm_windshield.c \
 	utils/crc8.c \
 	utils/log.c
 

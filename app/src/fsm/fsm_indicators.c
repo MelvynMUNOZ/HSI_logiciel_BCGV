@@ -1,6 +1,6 @@
 /**
  * \file fsm_indicators.c
- * \brief Finite state machine for indicators (hazard/warnings, left and right).
+ * \brief Finite state machine for indicators (hazard/warnings, left and right) control.
  * \details Handle states, events and transitions for the FSM.
  * \author Raphael CAUSSE
  */
@@ -311,7 +311,7 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
 
 int fsm_indicators_run(void)
 {
-    int ret = -1;
+    int ret = 0;
     size_t i = 0;
     fsm_event_t event = EV_NONE;
 

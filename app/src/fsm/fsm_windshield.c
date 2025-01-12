@@ -1,18 +1,17 @@
 /**
- * \file        fsm_windshield_washer.c
- * \brief       Finite State Machine for windshield washer and wiper control
- * \details     Implementation of the FSM controlling wipers and washer states
- * \author      Roland Cedric TAYO
+ * \file fsm_windshield.c
+ * \brief Finite State Machine for windshield washer and wiper control
+ * \details Implementation of the FSM controlling wipers and washer states
+ * \author Melvyn MUNOZ - Roland Cedric TAYO
  */
 
 /***** Includes **************************************************************/
 
 #include "fsm_common.h"
-#include "fsm_windshield_washer.h"
+#include "fsm_windshield.h"
 
 /***** Definitions ***********************************************************/
 
-#define TIMER_2S_COUNT_100MS (20) /* 2 seconds = 20 * 100ms */
 #define TRANS_COUNT (sizeof(trans) / sizeof(*trans))
 
 /* States */
@@ -60,7 +59,6 @@ static fsm_event_t get_next_event(fsm_state_t current_state);
 
 /***** Static Variables ******************************************************/
 
-/* Static variables */
 static fsm_state_t state = ST_INIT;
 static uint8_t timer_counter = 0;
 
@@ -200,7 +198,7 @@ static fsm_event_t get_next_event(fsm_state_t current_state)
 
 /***** Functions *************************************************************/
 
-int fsm_windshield_washer_run(void)
+int fsm_windshield_run(void)
 {
     int ret = 0;
     size_t i = 0;

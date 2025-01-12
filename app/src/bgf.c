@@ -14,8 +14,10 @@
 
 /***** Definitions ***********************************************************/
 
-#define BGF_SERIAL_CHANNEL (11 - 1) /* Serial channel 11 */
-#define BGF_SERIAL_FRAME_SIZE (2)	/* bytes */
+#define BGF_SERIAL_SERNUM (11)		 /* Serial number 11 */
+#define BGF_SERIAL_CHANNEL_WRITE (0) /* Serial channel for write operations */
+#define BGF_SERIAL_CHANNEL_READ (1)	 /* Serial channel for read operations */
+#define BGF_SERIAL_FRAME_SIZE (2)	 /* bytes */
 #define BGF_NUM_MSG (5)
 
 typedef struct
@@ -71,6 +73,7 @@ void bgf_set_bit_ack(const bgf_msg_t *msg)
 	if (msg->flag == 1)
 	{
 		set_bit_flag_bgf_ack(bit_flag_actual | bit_ack);
+		log_info("Bit set", NULL);
 	}
 	else
 	{
@@ -84,10 +87,10 @@ void bgf_set_bit_ack(const bgf_msg_t *msg)
  */
 void bgf_set_buffer_write(const bgf_msg_t *msg_to_send)
 {
-	serial_buffer_write[BGF_SERIAL_CHANNEL].serNum = BGF_SERIAL_CHANNEL + 1;
-	serial_buffer_write[BGF_SERIAL_CHANNEL].frameSize = BGF_SERIAL_FRAME_SIZE;
-	serial_buffer_write[BGF_SERIAL_CHANNEL].frame[0] = msg_to_send->id;
-	serial_buffer_write[BGF_SERIAL_CHANNEL].frame[1] = msg_to_send->flag;
+	serial_buffer_write[BGF_SERIAL_CHANNEL_WRITE].serNum = BGF_SERIAL_SERNUM;
+	serial_buffer_write[BGF_SERIAL_CHANNEL_WRITE].frameSize = BGF_SERIAL_FRAME_SIZE;
+	serial_buffer_write[BGF_SERIAL_CHANNEL_WRITE].frame[0] = msg_to_send->id;
+	serial_buffer_write[BGF_SERIAL_CHANNEL_WRITE].frame[1] = msg_to_send->flag;
 }
 
 /**
@@ -126,7 +129,7 @@ int32_t bgf_read_frames(int32_t drv_fd)
 	int32_t ret = 0;
 	int32_t count = 0;
 	uint32_t serial_data_len = 0;
-	bgf_msg_t msg_received;
+	bgf_msg_t msg_received = {0};
 	bool same_msg = false;
 
 	ret = drv_read_ser(drv_fd, serial_buffer_read, &serial_data_len);
@@ -136,19 +139,22 @@ int32_t bgf_read_frames(int32_t drv_fd)
 		return DRV_ERROR;
 	}
 
+	// #ifdef DEBUG
+	// 	serial_buffer_dump(serial_buffer_read);
+	// #endif
+
 	/* Try to pull all available BGF messages */
-	while ((serial_data_len > 0) && (serial_buffer_read[BGF_SERIAL_CHANNEL].frameSize == BGF_SERIAL_FRAME_SIZE))
+	while ((serial_data_len > 0) && (serial_buffer_read[BGF_SERIAL_CHANNEL_READ].serNum == BGF_SERIAL_SERNUM))
 	{
 		count++;
-		msg_received.id = serial_buffer_read[BGF_SERIAL_CHANNEL].frame[0];
-		msg_received.flag = serial_buffer_read[BGF_SERIAL_CHANNEL].frame[1];
+		msg_received.id = serial_buffer_read[BGF_SERIAL_CHANNEL_READ].frame[0];
+		msg_received.flag = serial_buffer_read[BGF_SERIAL_CHANNEL_READ].frame[1];
 
 		/* Check for acknowledgement */
 		same_msg = bgf_check_msg_received(&msg_received);
 		if (same_msg == true)
 		{
 			bgf_set_bit_ack(&msg_received);
-			log_info("Bit set", NULL);
 		}
 
 		/* Continue reading next available message */

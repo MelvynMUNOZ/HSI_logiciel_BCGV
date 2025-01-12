@@ -1,6 +1,6 @@
 /**
  * \file fsm_indicators.h
- * \brief Interface for finite state machine for indicators (hazard/warnings, left and right).
+ * \brief Interface for finite state machine for indicators (hazard/warnings, left and right) control.
  * \details Handle states, events and transitions for the FSM.
  * \author Raphael CAUSSE
  */

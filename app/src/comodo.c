@@ -14,7 +14,8 @@
 
 /***** Definitions ***********************************************************/
 
-#define COMODO_SERIAL_CHANNEL (12 - 1) /* Serial channel 12 */
+#define COMODO_SERIAL_SERNUM (12)      /* Serial number 12 */
+#define COMODO_SERIAL_CHANNEL_READ (0) /* Serial channel for read operations */
 #define COMODO_SERIAL_FRAME_SIZE (1)   /* byte */
 
 /***** Static Variables ******************************************************/
@@ -35,9 +36,13 @@ bool comodo_read_frame_500ms(int32_t drv_fd)
         return false;
     }
 
-    if ((serial_data_len > 0) && (serial_buffer_read[COMODO_SERIAL_CHANNEL].frameSize == COMODO_SERIAL_FRAME_SIZE))
+    // #ifdef DEBUG
+    //     serial_buffer_dump(serial_buffer_read);
+    // #endif
+
+    if (serial_buffer_read[COMODO_SERIAL_CHANNEL_READ].serNum == COMODO_SERIAL_SERNUM)
     {
-        comodo_frame = serial_buffer_read[COMODO_SERIAL_CHANNEL].frame[0];
+        comodo_frame = serial_buffer_read[COMODO_SERIAL_CHANNEL_READ].frame[0];
     }
 
 #ifdef DEBUG

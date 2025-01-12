@@ -14,11 +14,16 @@
 
 /***** Functions *************************************************************/
 
+/**
+ * \brief Read the COMODO 500ms serial frame.
+ * \param drv_fd : Driver file descriptor.
+ * \return bool : true if successfully read from driver, false otherwise
+ */
 bool comodo_read_frame_500ms(int32_t drv_fd);
 
 /**
  * \brief Decode the COMODO serial frame and update application data.
- * \return bool true if the frame was successfully decoded, false otherwise.
+ * \return bool : true if the frame was successfully decoded, false otherwise.
  */
 bool comodo_decode_frame(void);
 

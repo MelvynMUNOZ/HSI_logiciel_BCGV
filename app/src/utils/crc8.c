@@ -1,6 +1,7 @@
 /**
  * \file crc8.c
  * \brief Implementation of CRC-8 checksum computation using a lookup table.
+ * \details Based on https://github.com/lammertb/libcrc/blob/master/src/crc8.c
  * \author Raphael CAUSSE
  */
 

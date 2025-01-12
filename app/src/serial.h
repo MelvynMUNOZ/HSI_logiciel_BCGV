@@ -1,6 +1,6 @@
 /**
  * \file serial.h
- * \brief
+ * \brief Serial shared read/write buffers.
  * \author Raphael CAUSSE
  */
 
@@ -15,5 +15,13 @@
 
 extern serial_frame_t serial_buffer_read[DRV_MAX_FRAMES];
 extern serial_frame_t serial_buffer_write[DRV_MAX_FRAMES];
+
+/***** Functions *************************************************************/
+
+/**
+ * \brief Dump serial buffer
+ * \param serial_buffer : Serial buffer to dump
+ */
+void serial_buffer_dump(const serial_frame_t *serial_buffer);
 
 #endif /* SERIAL_H */

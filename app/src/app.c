@@ -14,7 +14,7 @@
 #include "log.h"
 #include "fsm_lights.h"
 #include "fsm_indicators.h"
-#include "fsm_windshield_washer.h"
+#include "fsm_windshield.h"
 
 /***** Main function *********************************************************/
 
@@ -62,7 +62,7 @@ int main(void)
         /* FSM executions */
         ret = fsm_lights_run();
         ret = fsm_indicators_run();
-        ret = fsm_windshield_washer_run();
+        ret = fsm_windshield_run();
 
         /* Encode and send MUX frame (UDP) */
         mux_encode_frame_200ms();
