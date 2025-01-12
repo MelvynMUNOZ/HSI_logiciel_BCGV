@@ -83,6 +83,7 @@ static int callback_init(void)
     set_flag_highbeam_light(OFF);
     return 0;
 }
+
 /**
  * \brief Set all flags to OFF.
  * \return int : Negative value for error code.

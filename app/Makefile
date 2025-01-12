@@ -15,6 +15,7 @@ SOURCES := \
 	serial.c \
 	fsm/fsm_indicators.c \
 	fsm/fsm_lights.c \
+	fsm/fsm_windshield_washer.c \
 	utils/crc8.c \
 	utils/log.c
 
